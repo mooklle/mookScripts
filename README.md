@@ -6,7 +6,7 @@
 
 A collection of LUA scripts to be used with [MemoryError](http://memoryerror.infinityfreeapp.com/).
 
-## mookMiner v0.10
+## mookMiner v0.10.1
 An AIO mining script with auto navigation, banking (+ ore box), and level-based ore switching.
 
 Currently only supports up to Corrupted Ore.
@@ -16,6 +16,12 @@ Currently only supports up to Corrupted Ore.
 - `data/ores.lua`
 
 #### Changelog
+v0.10.1 [28/08/2024]
+```
+- Added check for missing bank functions, skips inventory check if Bank() is nil.
+    (useful for ores like corrupted ore, which stacks and does not need banking)
+```
+
 v0.10 [28/08/2024]
 ```
 - Added corrupted ore (seren stone)

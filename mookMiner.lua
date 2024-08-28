@@ -4,7 +4,7 @@
 @description AIO Mining Script
 @author mookl
 @date 28/08/2024
-@version 0.10
+@version 0.10.1
 
 Ores working:
 [X] Copper
@@ -61,10 +61,15 @@ while API.Read_LoopyLoop() do
         goto continue
     end
 
+    if ORES.Selected.Bank == nil then
+        goto mine
+    end
+
     if API.InvFull_() then
         print("Inventory full, checking ore box")
         if ORES.Selected.UseOreBox then
             ORES:FillOreBox()
+
             if API.InvFull_() then
                 print("Ore box full, banking")
                 ORES.Selected:Bank()
@@ -77,6 +82,7 @@ while API.Read_LoopyLoop() do
         goto continue
     end
 
+    ::mine::
     ORES.Selected:Mine()
 
     ::continue::

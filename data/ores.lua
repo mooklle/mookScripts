@@ -360,8 +360,6 @@ ORES.Corrupted = {
 
         API.DoAction_WalkerW(ORES:RandomiseTile(self.Spot.x, self.Spot.y, self.Spot.z, 5, 2))
         API.WaitUntilMovingEnds()
-    end,
-    Bank = function(self)
     end
 }
 -- ORES.LightAnimica = {
