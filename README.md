@@ -6,16 +6,21 @@
 
 A collection of LUA scripts to be used with [MemoryError](http://memoryerror.infinityfreeapp.com/).
 
-## mookMiner v0.8
-An AIO mining script with auto navigation, banking (+ ore box), and level-based ore switching (WIP).
+## mookMiner v0.9
+An AIO mining script with auto navigation, banking (+ ore box), and level-based ore switching.
 
-Currently only supports up to Banite, and selecting which ore to mine is manual.
+Currently only supports up to Banite ~~and selecting which ore to mine is manual~~.
 
 #### Requirements
 - [Dead's Lodestones](https://me.deadcod.es/lodestones)
 - `data/ores.lua`
 
 #### Changelog
+v0.9 [28/08/2024]
+```
+- Added automatic ore selection
+```
+
 v0.8 [27/08/2024]
 ```
 - Added copper
@@ -34,3 +39,8 @@ v0.2 - Initial commit [27/08/2024]
 ```
 - Initial script upload
 ```
+
+#### TO DO
+- Finish adding ores
+- Add banking toggle
+- Add some validation to traversal functions (as it is currently, it can get stuck in a loop if the user interferes during traversal)
