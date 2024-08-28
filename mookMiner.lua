@@ -3,8 +3,8 @@
 @title mookMiner
 @description AIO Mining Script
 @author mookl
-@date 27/08/2024
-@version 0.8
+@date 28/08/2024
+@version 0.10
 
 Ores working:
 [X] Copper
@@ -20,7 +20,7 @@ Ores working:
 [X] Necrite
 [X] Phasmatite
 [X] Banite
-[ ] Corrupted
+[X] Corrupted
 [ ] Light Animica
 [ ] Dark Animica
 

@@ -15,6 +15,10 @@ local waitForObject = function(id, type)
     API.RandomSleep2(200, 100, 300)
 end
 
+local miningLevel = function()
+    return API.GetSkillByName("MINING").level
+end
+
 ORES.CurrentRock = nil
 ORES.Selected = nil
 
@@ -31,7 +35,7 @@ ORES.Copper = {
     Mine = function(self)
         ORES:Mine(self)
     end,
-    Traverse = function(self)
+    Traverse = function()
         ORES:BurthorpeMine()
     end,
     Bank = function(self)
@@ -42,11 +46,11 @@ ORES.Copper = {
 
         self:EnterCave()
     end,
-    EnterCave = function(self)
+    EnterCave = function()
         API.DoAction_Object1(0x29, API.OFF_ACT_GeneralObject_route0, { 66876 }, 14)
         API.WaitUntilMovingEnds()
     end,
-    ExitCave = function(self)
+    ExitCave = function()
         API.DoAction_Object1(0x29, API.OFF_ACT_GeneralObject_route0, { 67002 }, 12)
         API.WaitUntilMovingEnds()
     end
@@ -279,47 +283,10 @@ ORES.Necrite = {
     UseOreBox = true,
     -- TODO: clean up this function & PickRock, reduce amount of duplicated code. Figure out why DoAction_Object_Direct is being wonky.
     Mine = function(self)
-        local isAnimating = API.CheckAnim(50)
-        local rock = self:PickRock()
-        local rockCheck = ORES.CurrentRock ~= nil and rock.Id == ORES.CurrentRock.Id
-
-        if isAnimating and rockCheck then
-            local stamina = API.LocalPlayer_HoverProgress()
-
-            if stamina <= (200 + math.random(-15, 10)) then
-                print("Clicking at " .. tostring(stamina) .. " stamina")
-                -- DoAction_Object_Direct is acting extremely fucky, works like this but not called from ORES:ClickRock()
-                API.DoAction_Object_Direct(0x3a, API.OFF_ACT_GeneralObject_route0, rock)
-                return
-            end
-        else
-            API.DoAction_Object_Direct(0x3a, API.OFF_ACT_GeneralObject_route0, rock)
-        end
-
-        API.RandomSleep2(1000, 600, 800)
+        ORES:Mine(self)
     end,
     PickRock = function(self)
-        local sparkles = API.GetAllObjArray1(SPARKLE_IDS, 25, { 4 })
-        local rocks = API.GetAllObjArray1(self.RockIDs, 25, { 12 })
-
-        if #sparkles > 0 then
-            for _, rock in pairs(rocks) do
-                for _, spark in pairs(sparkles) do
-                    if math.abs(rock.Tile_XYZ.x - spark.Tile_XYZ.x) < 1 and math.abs(rock.Tile_XYZ.y - spark.Tile_XYZ.y) < 1 then
-                        print("Moving to sparkling rock")
-
-                        return rock
-                    end
-                end
-            end
-        else
-            if ORES.CurrentRock ~= nil then
-                return ORES.CurrentRock
-            end
-        end
-
-        print("No current rock, selecting nearest")
-        return rocks[1]
+        return ORES:PickRock(self, 12)
     end,
     Traverse = function(self)
         LODESTONE.Wilderness()
@@ -364,50 +331,67 @@ ORES.Banite = {
 }
 ORES.Corrupted = {
     OreID = 32262,
-    RockIDs = {},
+    RockIDs = { 113016 },
     Level = 89,
     Spot = {
-        x = 0,
-        y = 0,
-        z = 0
+        x = 2220,
+        y = 3298,
+        z = 1
     },
     UseOreBox = false,
     Mine = function(self)
-        ORES:Mine(self)
+        if API.CheckAnim(50) then
+            return
+        end
+
+        local rock = self:PickRock()
+
+        if API.DoAction_Object_Direct(0x3a, API.OFF_ACT_GeneralObject_route0, rock) then
+            ORES.CurrentRock = rock
+            API.RandomSleep2(300, 500, 600)
+        end
+    end,
+    PickRock = function(self)
+        return ORES.CurrentRock or API.GetAllObjArray1(self.RockIDs, 25, { 12 })[1]
     end,
     Traverse = function(self)
+        LODESTONE.Prifddinas()
+        API.WaitUntilMovingandAnimEnds()
+
+        API.DoAction_WalkerW(ORES:RandomiseTile(self.Spot.x, self.Spot.y, self.Spot.z, 5, 2))
+        API.WaitUntilMovingEnds()
     end,
     Bank = function(self)
     end
 }
-ORES.LightAnimica = {
-    OreID = 0,
-    RockIDs = {},
-    Level = 90,
-    Spot = {},
-    UseOreBox = true,
-    Mine = function(self)
-        ORES:Mine(self)
-    end,
-    Traverse = function(self)
-    end,
-    Bank = function(self)
-    end
-}
-ORES.DarkAnimica = {
-    OreID = 0,
-    RockIDs = {},
-    Level = 90,
-    Spot = {},
-    UseOreBox = true,
-    Mine = function(self)
-        ORES:Mine(self)
-    end,
-    Traverse = function(self)
-    end,
-    Bank = function(self)
-    end
-}
+-- ORES.LightAnimica = {
+--     OreID = 0,
+--     RockIDs = {},
+--     Level = 90,
+--     Spot = {},
+--     UseOreBox = true,
+--     Mine = function(self)
+--         ORES:Mine(self)
+--     end,
+--     Traverse = function(self)
+--     end,
+--     Bank = function(self)
+--     end
+-- }
+-- ORES.DarkAnimica = {
+--     OreID = 0,
+--     RockIDs = {},
+--     Level = 90,
+--     Spot = {},
+--     UseOreBox = true,
+--     Mine = function(self)
+--         ORES:Mine(self)
+--     end,
+--     Traverse = function(self)
+--     end,
+--     Bank = function(self)
+--     end
+-- }
 
 function ORES:BurthorpeMine()
     LODESTONE.Burthope()
@@ -501,6 +485,9 @@ function ORES:SelectOre()
     local ml = miningLevel()
 
     if selectedOre ~= nil and ORES[selectedOre] ~= nil and ORES[selectedOre].Level <= ml then
+        if ORES.Selected == ORES[selectedOre] then
+            return
+        end
         print("Mining manually selected ore: " .. selectedOre)
         ORES.Selected = ORES[selectedOre]
         return
@@ -516,7 +503,7 @@ function ORES:SelectOre()
         [60] = "Orichalcite",
         [75] = "Phasmatite",
         [81] = "Banite",
-        --[89] = "Corrupted",
+        [89] = "Corrupted",
     }
 
     local highest = nil
@@ -543,9 +530,10 @@ function ORES:FillOreBox()
     API.RandomSleep2(1200, 300, 500)
 end
 
-function ORES:PickRock(ore)
+function ORES:PickRock(ore, type)
+    type = type or 0
     local sparkles = API.GetAllObjArray1(SPARKLE_IDS, 25, { 4 })
-    local rocks = API.GetAllObjArray1(ore.RockIDs, 25, { 0 })
+    local rocks = API.GetAllObjArray1(ore.RockIDs, 25, { type })
 
     if #sparkles > 0 then
         for _, rock in pairs(rocks) do
@@ -575,25 +563,23 @@ end
 
 function ORES:Mine(ore)
     local isAnimating = API.CheckAnim(50)
-    local rock = ORES:PickRock(ore)
+    local rock = ore.PickRock ~= nil and ORES:PickRock(ore) or ore:PickRock()
     local rockCheck = ORES.CurrentRock ~= nil and rock.Id == ORES.CurrentRock.Id
-
+    
     if isAnimating and rockCheck then
         local stamina = API.LocalPlayer_HoverProgress()
-
+        
         if stamina <= (200 + math.random(-15, 10)) then
             print("Clicking at " .. tostring(stamina) .. " stamina")
+            
             ORES:ClickRock(rock)
+            
         end
     else
         ORES:ClickRock(rock)
     end
-
+    
     API.RandomSleep2(1000, 600, 800)
-end
-
-function miningLevel()
-    return API.GetSkillByName("MINING").level
 end
 
 return ORES
