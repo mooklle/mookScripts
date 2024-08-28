@@ -1,7 +1,7 @@
 local API = require("../api")
 local LODESTONE = require("../lodestones")
 
-local selectedOre = "Necrite"
+local selectedOre = nil
 
 -----DATA
 local ORE_BOX = { 44779, 44781, 44783, 44785, 44787, 44789, 44791, 44793, 44795, 44797 }
@@ -21,6 +21,7 @@ ORES.Selected = nil
 ORES.Copper = {
     OreID = 436,
     RockIDs = { 113026, 113027, 113028 },
+    Level = 1,
     Spot = {
         x = 2287,
         y = 4514,
@@ -53,6 +54,7 @@ ORES.Copper = {
 ORES.Tin = {
     OreID = 438,
     RockIDs = { 113030, 113031 },
+    Level = 1,
     Spot = ORES.Copper.Spot,
     UseOreBox = true,
     Mine = function(self)
@@ -64,6 +66,7 @@ ORES.Tin = {
 ORES.Iron = {
     OreID = 440,
     RockIDs = { 113040, 113038, 113039 },
+    Level = 10,
     Spot = {
         x = 2278,
         y = 4501,
@@ -87,6 +90,7 @@ ORES.Iron = {
 ORES.Coal = {
     OreID = 453,
     RockIDs = { 113042, 113041, 113043 },
+    Level = 20,
     Spot = {
         x = 3049,
         y = 9822,
@@ -110,6 +114,7 @@ ORES.Coal = {
 ORES.Mithril = {
     OreID = 447,
     RockIDs = { 113051, 113052, 113050 },
+    Level = 30,
     Spot = {
         x = 3287,
         y = 3363,
@@ -133,6 +138,7 @@ ORES.Mithril = {
 ORES.Adamantite = {
     OreID = 449,
     RockIDs = { 113055, 113053 },
+    Level = 40,
     Spot = ORES.Mithril.Spot,
     UseOreBox = true,
     Mine = function(self)
@@ -144,6 +150,7 @@ ORES.Adamantite = {
 ORES.Luminite = {
     OreID = 44820,
     RockIDs = { 113056, 113057, 113058 },
+    Level = 40,
     Spot = {
         x = 3039,
         y = 9766,
@@ -167,6 +174,7 @@ ORES.Luminite = {
 ORES.Runite = {
     OreID = 451,
     RockIDs = { 113125, 113126, 113127 },
+    Level = 50,
     Spot = {
         x = 3101,
         y = 3564,
@@ -190,6 +198,7 @@ ORES.Runite = {
 ORES.Orichalcite = {
     OreID = 44822,
     RockIDs = { 113070, 113069 },
+    Level = 60,
     Spot = {
         x = 3044,
         y = 9738,
@@ -213,6 +222,7 @@ ORES.Orichalcite = {
 ORES.Drakolith = {
     OreID = 44824,
     RockIDs = { 113131, 113132, 113133 },
+    Level = 60,
     Spot = {
         x = 3184,
         y = 3633,
@@ -236,6 +246,7 @@ ORES.Drakolith = {
 ORES.Plasmatite = {
     OreID = 44828,
     RockIDs = { 113139, 113138, 113137 },
+    Level = 70,
     Spot = {
         x = 3690,
         y = 3397,
@@ -259,12 +270,14 @@ ORES.Plasmatite = {
 ORES.Necrite = {
     OreID = 44826,
     RockIDs = { 113207, 113206, 113208 },
+    Level = 70,
     Spot = {
         x = 3029,
         y = 3800,
         z = 0
     },
     UseOreBox = true,
+    -- TODO: clean up this function & PickRock, reduce amount of duplicated code. Figure out why DoAction_Object_Direct is being wonky.
     Mine = function(self)
         local isAnimating = API.CheckAnim(50)
         local rock = self:PickRock()
@@ -275,7 +288,7 @@ ORES.Necrite = {
 
             if stamina <= (200 + math.random(-15, 10)) then
                 print("Clicking at " .. tostring(stamina) .. " stamina")
-                -- DoAction_Object_Direct is acting extremely fucky, works like this but not called from ORES:clickRock()
+                -- DoAction_Object_Direct is acting extremely fucky, works like this but not called from ORES:ClickRock()
                 API.DoAction_Object_Direct(0x3a, API.OFF_ACT_GeneralObject_route0, rock)
                 return
             end
@@ -323,6 +336,7 @@ ORES.Necrite = {
 ORES.Banite = {
     OreID = 21778,
     RockIDs = { 113140, 113141, 113142 },
+    Level = 80,
     Spot = {
         x = 3058,
         y = 3945,
@@ -351,6 +365,7 @@ ORES.Banite = {
 ORES.Corrupted = {
     OreID = 32262,
     RockIDs = {},
+    Level = 89,
     Spot = {
         x = 0,
         y = 0,
@@ -368,6 +383,7 @@ ORES.Corrupted = {
 ORES.LightAnimica = {
     OreID = 0,
     RockIDs = {},
+    Level = 90,
     Spot = {},
     UseOreBox = true,
     Mine = function(self)
@@ -381,6 +397,7 @@ ORES.LightAnimica = {
 ORES.DarkAnimica = {
     OreID = 0,
     RockIDs = {},
+    Level = 90,
     Spot = {},
     UseOreBox = true,
     Mine = function(self)
@@ -480,8 +497,40 @@ function ORES:RandomiseTile(x, y, z, off_x, off_y)
     return WPOINT.new(x, y, z)
 end
 
-function ORES:GetSelected()
-    ORES.Selected = ORES[selectedOre]
+function ORES:SelectOre()
+    local ml = miningLevel()
+
+    if selectedOre ~= nil and ORES[selectedOre] ~= nil and ORES[selectedOre].Level <= ml then
+        print("Mining manually selected ore: " .. selectedOre)
+        ORES.Selected = ORES[selectedOre]
+        return
+    end
+
+    local targets = {
+        [1]  = "Copper",
+        [10] = "Iron",
+        [20] = "Coal",
+        [30] = "Mithril",
+        [40] = "Adamantite",
+        [50] = "Runite",
+        [60] = "Orichalcite",
+        [75] = "Phasmatite",
+        [81] = "Banite",
+        --[89] = "Corrupted",
+    }
+
+    local highest = nil
+    for k,v in pairs(targets) do
+        if k <= ml and (highest == nil or k > highest) then
+            highest = k
+        end
+    end
+
+    local sel = targets[highest]
+    if sel ~= nil and ORES.Selected ~= ORES[sel] then
+        ORES.Selected = ORES[sel]
+        print("Mining level: " .. tostring(ml) .. ", auto mining " .. sel)
+    end
 end
 
 function ORES:FillOreBox()
@@ -517,7 +566,7 @@ function ORES:PickRock(ore)
     return rocks[1]
 end
 
-function ORES:clickRock(rock)
+function ORES:ClickRock(rock)
     if API.DoAction_Object_Direct(0x3a, API.OFF_ACT_GeneralObject_route0, rock) then
         ORES.CurrentRock = rock
         API.RandomSleep2(300, 500, 600)
@@ -534,13 +583,17 @@ function ORES:Mine(ore)
 
         if stamina <= (200 + math.random(-15, 10)) then
             print("Clicking at " .. tostring(stamina) .. " stamina")
-            ORES:clickRock(rock)
+            ORES:ClickRock(rock)
         end
     else
-        ORES:clickRock(rock)
+        ORES:ClickRock(rock)
     end
 
     API.RandomSleep2(1000, 600, 800)
+end
+
+function miningLevel()
+    return API.GetSkillByName("MINING").level
 end
 
 return ORES

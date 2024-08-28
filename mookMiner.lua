@@ -24,11 +24,13 @@ Ores working:
 [ ] Light Animica
 [ ] Dark Animica
 
-Edit selectedOre in ores.lua to configure which ore to mine. Automatically navigates to mining spot and banks ores.
+Edit selectedOre in ores.lua to configure which ore to mine. If selectedOre is nil, auto-selects based on level.
+Edit the targets table in ORES:SelectOre to change mining targets.
+Automatically navigates to mining spot and banks ores.
 
 TO DO:
 - Add other ores
-- Add AIO functionality (auto-switching ores at level, etc)
+- Add banking toggle (drop ores if disabled)
 
 ADDITIONAL CREDITS
   Dead    - Lodestones
@@ -45,7 +47,7 @@ API.SetMaxIdleTime(15)
 while API.Read_LoopyLoop() do
     API.DoRandomEvents()
     math.randomseed(os.time())
-    ORES:GetSelected()
+    ORES:SelectOre()
 
     if ORES.Selected == nil then
         print("Selected ore must not be nil")
