@@ -15,6 +15,10 @@ Currently only supports up to Corrupted Ore.
 - [Dead's Lodestones](https://me.deadcod.es/lodestones)
 - `data/ores.lua`
 
+#### Known issues
+- Currently the traversal methods can hang if loading after teleporting takes longer than expected, or if the user interferes with it. I plan to replace the traversal system entirely with a new system which uses a series of steps with area checks, which can then be iterated over by a generic traversal function. This will enable me to add some checks, and abort if it gets stuck.
+- It's entirely possible to die on the way to the Necrite spot due to the aggressive creatures. I recommend either mining Phasmatite at that level instead, or re-writing the traversal function to avoid these creatures if that's a concern. Not really sure I can do anything to fix this one.
+
 #### Changelog
 v0.10.1 [28/08/2024]
 ```
