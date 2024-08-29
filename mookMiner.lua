@@ -3,8 +3,8 @@
 @title mookMiner
 @description AIO Mining Script
 @author mookl
-@date 28/08/2024
-@version 0.10.1
+@date 29/08/2024
+@version 1.0
 
 Ores working:
 [X] Copper
@@ -21,15 +21,14 @@ Ores working:
 [X] Phasmatite
 [X] Banite
 [X] Corrupted
-[ ] Light Animica
-[ ] Dark Animica
+[X] Light Animica
+[X] Dark Animica
 
-Edit selectedOre in ores.lua to configure which ore to mine. If selectedOre is nil, auto-selects based on level.
-Edit the targets table in ORES:SelectOre to change mining targets.
+Edit SELECTED_ORE in ores.lua to configure which ore to mine. If nil, auto-selects based on level.
+Edit LEVEL_MAP to change mining targets.
 Automatically navigates to mining spot and banks ores.
 
 TO DO:
-- Add other ores
 - Add banking toggle (drop ores if disabled)
 
 ADDITIONAL CREDITS
@@ -57,7 +56,8 @@ while API.Read_LoopyLoop() do
     if not API.PInArea(ORES.Selected.Spot.x, 25, ORES.Selected.Spot.y, 25, ORES.Selected.Spot.z) 
         and not API.CheckAnim(120) and not API.ReadPlayerMovin2() then
         print("Traversing to ore location")
-        ORES.Selected:Traverse()
+        -- ORES.Selected:Traverse()
+        ORES:Traverse(ORES.Selected)
         goto continue
     end
 
@@ -86,5 +86,5 @@ while API.Read_LoopyLoop() do
     ORES.Selected:Mine()
 
     ::continue::
-    API.RandomSleep2(700, 300, 600)
+    API.RandomSleep2(100, 80, 400)
 end
