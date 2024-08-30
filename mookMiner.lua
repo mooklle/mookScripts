@@ -4,7 +4,7 @@
 @description AIO Mining Script
 @author mookl
 @date 29/08/2024
-@version 1.0
+@version 1.0.1
 
 Ores working:
 [X] Copper

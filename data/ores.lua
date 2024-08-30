@@ -13,8 +13,8 @@ local LEVEL_MAP = {
     [60] = "Orichalcite",
     [75] = "Phasmatite",
     [81] = "Banite",
-    --[89] = "Corrupted",
-    [90] = "DarkAnimica"
+    [89] = "Corrupted",
+    -- [97] = "DarkAnimica"
 }
 
 ----- DATA
@@ -22,10 +22,6 @@ local ORE_BOX = { 44779, 44781, 44783, 44785, 44787, 44789, 44791, 44793, 44795,
 local SPARKLE_IDS = { 7164, 7165 }
 local ORES = {}
 local LOCATIONS = {}
-
-local miningLevel = function()
-    return API.GetSkillByName("MINING").level
-end
 
 local concatTables = function(...)
     local conc = {}
@@ -522,16 +518,14 @@ ORES.Corrupted = { -- Corrupted (Seren Stone) - Prifddinas
     },
     UseOreBox = false,
     Mine = function(self)
-        if API.CheckAnim(50) then
+        if API.CheckAnim(50) or API.ReadPlayerMovin2() then
             return
         end
 
         local rock = self:PickRock()
+        local tile = rock.Tile_XYZ
 
-        if API.DoAction_Object_Direct(0x3a, API.OFF_ACT_GeneralObject_route0, rock) then
-            ORES.CurrentRock = rock
-            API.RandomSleep2(300, 500, 600)
-        end
+        API.DoAction_Object2(0x3a, API.OFF_ACT_GeneralObject_route0, { 113016 }, 25, WPOINT.new(tile.x, tile.y, tile.z))
     end,
     PickRock = function(self)
         return ORES.CurrentRock or API.GetAllObjArray1(self.RockIDs, 25, { 12 })[1]
@@ -718,7 +712,7 @@ function ORES:RandomiseTile(x, y, z, off_x, off_y)
 end
 
 function ORES:SelectOre()
-    local ml = miningLevel()
+    local ml = API.GetSkillByName("MINING").level
 
     if SELECTED_ORE ~= nil and ORES[SELECTED_ORE] ~= nil and ORES[SELECTED_ORE].Level <= ml then
         if ORES.Selected == ORES[SELECTED_ORE] then

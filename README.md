@@ -6,7 +6,7 @@
 
 A collection of LUA scripts to be used with [MemoryError](http://memoryerror.infinityfreeapp.com/).
 
-## mookMiner v1.0
+## mookMiner v1.0.1
 An AIO mining script with auto navigation, banking (+ ore box), and level-based ore switching.
 
 Currently supports up to Dark/Light Animica.
@@ -19,6 +19,11 @@ Currently supports up to Dark/Light Animica.
 - It's entirely possible to die on the way to the Necrite spot due to the aggressive creatures. I recommend either mining Phasmatite at that level instead, or re-writing the traversal function to avoid these creatures if that's a concern. Not really sure I can do anything to fix this one.
 
 #### Changelog
+v1.0.1 [Ongoing]
+```
+- Fixed a bug causing Seren Stone mining to fail after a while, seems to be related to API.DoAction_Object_Direct.
+```
+
 v1.0 [29/08/2024]
 ```
 - Rewrote traversal function for better handling of getting stuck, and to allow for partial traversal.
