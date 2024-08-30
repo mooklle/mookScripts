@@ -67,7 +67,7 @@ while API.Read_LoopyLoop() do
 
     if API.InvFull_() then
         print("Inventory full, checking ore box")
-        if ORES.Selected.UseOreBox then
+        if ORES.Selected.UseOreBox and ORES:HasOreBox() then
             ORES:FillOreBox()
 
             if API.InvFull_() then

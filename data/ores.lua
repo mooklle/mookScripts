@@ -5,6 +5,7 @@ local LODESTONE = require("../lodestones")
 local SELECTED_ORE = nil
 local LEVEL_MAP = {
     [1]  = "Copper",
+    [5]  = "Tin",
     [10] = "Iron",
     [20] = "Coal",
     [30] = "Mithril",
@@ -14,7 +15,7 @@ local LEVEL_MAP = {
     [75] = "Phasmatite",
     [81] = "Banite",
     [89] = "Corrupted",
-    -- [97] = "DarkAnimica"
+    [95] = "DarkAnimica"
 }
 
 ----- DATA
@@ -744,8 +745,12 @@ function ORES:SelectOre()
     end
 end
 
+function ORES:HasOreBox()
+    return API.InvItemFound2(ORE_BOX)
+end
+
 function ORES:FillOreBox()
-    if not API.InvItemFound2(ORE_BOX) then
+    if not ORES:HasOreBox() then
         print("No ore box found")
         return
     end
