@@ -19,7 +19,13 @@ Currently supports up to Dark/Light Animica.
 - It's entirely possible to die on the way to the Necrite spot due to the aggressive creatures. I recommend either mining Phasmatite at that level instead, or re-writing the traversal function to avoid these creatures if that's a concern. Not really sure I can do anything to fix this one.
 
 #### Changelog
-v1.0.1 [Ongoing]
+v1.0.2 [30/80/2024]
+```
+- Replaced DoAction_Object_Direct with DoAction_Object2
+- Fixed auto-switching, no longer requires a script restart (I am dumb and should stop coding drunk)
+```
+
+v1.0.1 [30/08/2024]
 ```
 - Fixed a bug causing Seren Stone mining to fail after a while, seems to be related to API.DoAction_Object_Direct.
 ```

@@ -35,6 +35,16 @@ local concatTables = function(...)
     return conc
 end
 
+local tableContains = function(table, value)
+    for k,v in ipairs(table) do
+        if v == value then
+            return true
+        end
+    end
+
+    return false
+end
+
 ----- SETUP
 ORES.CurrentRock = nil
 ORES.Selected = nil
@@ -58,7 +68,7 @@ LOCATIONS = {
             area = { x = 2885, y = 3503, z = 0, range = { 12, 12 } },
             next = function()
                 API.WaitUntilMovingEnds() -- Fails to interact with cave otherwise
-                API.DoAction_Object1(0x29, API.OFF_ACT_GeneralObject_route0, { 66876 }, 14)
+                API.DoAction_Object1(0x29, API.OFF_ACT_GeneralObject_route0, { 66876 }, 30)
             end,
             check = function()
                 return #API.GetAllObjArray1({ 66876 }, 20, { 12 }) > 0
@@ -407,7 +417,6 @@ ORES.Necrite = { -- Necrite - Wilderness (north of bandit camp)
         z = 0
     },
     UseOreBox = true,
-    -- TODO: clean up this function & PickRock, reduce amount of duplicated code. Figure out why DoAction_Object_Direct is being wonky.
     Mine = function(self)
         ORES:Mine(self)
     end,
@@ -523,9 +532,7 @@ ORES.Corrupted = { -- Corrupted (Seren Stone) - Prifddinas
         end
 
         local rock = self:PickRock()
-        local tile = rock.Tile_XYZ
-
-        API.DoAction_Object2(0x3a, API.OFF_ACT_GeneralObject_route0, { 113016 }, 25, WPOINT.new(tile.x, tile.y, tile.z))
+        ORES:ClickRock(rock)
     end,
     PickRock = function(self)
         return ORES.CurrentRock or API.GetAllObjArray1(self.RockIDs, 25, { 12 })[1]
@@ -762,7 +769,7 @@ function ORES:PickRock(ore, type)
             end
         end
     else
-        if ORES.CurrentRock ~= nil then
+        if ORES.CurrentRock ~= nil and tableContains(ORES.Selected.RockIDs, ORES.CurrentRock.Id) then
             return ORES.CurrentRock
         end
     end
@@ -772,7 +779,9 @@ function ORES:PickRock(ore, type)
 end
 
 function ORES:ClickRock(rock)
-    if API.DoAction_Object_Direct(0x3a, API.OFF_ACT_GeneralObject_route0, rock) then
+    local tile = rock.Tile_XYZ
+
+    if API.DoAction_Object2(0x3a, API.OFF_ACT_GeneralObject_route0, { rock.Id }, 25, WPOINT.new(tile.x, tile.y, tile.z)) then
         ORES.CurrentRock = rock
         API.RandomSleep2(300, 500, 600)
     end
