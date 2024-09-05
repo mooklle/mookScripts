@@ -4,25 +4,7 @@
 @description AIO Mining Script
 @author mookl
 @date 30/08/2024
-@version 1.0.2
-
-Ores working:
-[X] Copper
-[X] Tin
-[X] Iron
-[X] Coal
-[X] Mithril
-[X] Adamantite
-[X] Luminite
-[X] Runite
-[X] Orichalcite
-[X] Drakolith
-[X] Necrite
-[X] Phasmatite
-[X] Banite
-[X] Corrupted
-[X] Light Animica
-[X] Dark Animica
+@version 1.0.3
 
 Edit SELECTED_ORE in ores.lua to configure which ore to mine. If nil, auto-selects based on level.
 Edit LEVEL_MAP to change mining targets.
@@ -53,14 +35,6 @@ while API.Read_LoopyLoop() do
         break
     end
 
-    if not API.PInArea(ORES.Selected.Spot.x, 25, ORES.Selected.Spot.y, 25, ORES.Selected.Spot.z) 
-        and not API.CheckAnim(120) and not API.ReadPlayerMovin2() then
-        print("Traversing to ore location")
-        -- ORES.Selected:Traverse()
-        ORES:Traverse(ORES.Selected)
-        goto continue
-    end
-
     if ORES.Selected.Bank == nil then
         goto mine
     end
@@ -82,9 +56,16 @@ while API.Read_LoopyLoop() do
         goto continue
     end
 
+    if not API.PInArea(ORES.Selected.Spot.x, 25, ORES.Selected.Spot.y, 25, ORES.Selected.Spot.z) 
+        and not API.CheckAnim(120) and not API.ReadPlayerMovin2() then
+        print("Traversing to ore location")
+        ORES:Traverse(ORES.Selected)
+        goto continue
+    end
+
     ::mine::
     ORES.Selected:Mine()
 
     ::continue::
-    API.RandomSleep2(100, 80, 400)
+    API.RandomSleep2(80, 100, 300)
 end

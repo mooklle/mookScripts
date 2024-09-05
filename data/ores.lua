@@ -2,7 +2,17 @@ local API = require("../api")
 local LODESTONE = require("../lodestones")
 
 ----- CONFIG
-local SELECTED_ORE = nil
+--- Edit SELECTED_ORE to choose which rock to mine. Either specify one of the entries in ORES, or set to nil to use LEVEL_MAP instead.
+--- Edit LEVEL_MAP to choose which ores to mine at which levels. Will automatically switch when it reaches a new threshold.
+
+--- Currently available ores:
+--- 
+--- Copper, Tin, Iron, Coal, Mithril, Adamantite, Luminite, Runite, 
+--- Orichalcite, Drakolith, Phasmatite, Necrite, Banite, Corrupted,
+--- LightAnimica, DarkAnimica
+--- 
+--- Gems: CommonGem, UncommonGem, PreciousGem, PrifGem
+local SELECTED_ORE = "PrifGem"
 local LEVEL_MAP = {
     [1]  = "Copper",
     [5]  = "Tin",
@@ -20,7 +30,15 @@ local LEVEL_MAP = {
 
 ----- DATA
 local ORE_BOX = { 44779, 44781, 44783, 44785, 44787, 44789, 44791, 44793, 44795, 44797 }
+local GEM_BAG = { 18338, 31455 }
 local SPARKLE_IDS = { 7164, 7165 }
+local GEM_IDS = { 1627, 1625, 1629, 1623, 1621, 1619, 1617, 1631, 21345 }
+local DEPOSIT_ALL = 7
+local EMPTY_GEM_BAG = 8
+local BANKS = {
+    Burthorpe = { 25688 },
+    Prif = { 92692 }
+}
 local ORES = {}
 local LOCATIONS = {}
 
@@ -37,13 +55,21 @@ local concatTables = function(...)
 end
 
 local tableContains = function(table, value)
-    for k,v in ipairs(table) do
+    for k, v in ipairs(table) do
         if v == value then
             return true
         end
     end
 
     return false
+end
+
+local waitForMovement = function()
+    while API.ReadPlayerMovin2() do
+        API.RandomSleep2(300, 300, 600)
+    end
+
+    API.RandomSleep2(50, 100, 200)
 end
 
 ----- SETUP
@@ -75,6 +101,21 @@ LOCATIONS = {
                 return #API.GetAllObjArray1({ 66876 }, 20, { 12 }) > 0
             end,
             attempts = 50
+        }
+    },
+
+    AlKharidMine = {
+        { -- 1: TP -> Al Kharid
+            area = nil,
+            next = function()
+                LODESTONE.AlKharid()
+            end
+        },
+        { -- 2: Run to mine
+            area = { x = 3297, y = 3184, z = 0, range = { 30, 30 } },
+            next = function()
+                API.DoAction_WalkerW(ORES:RandomiseTile(3300, 3307, 0, 3, 5))
+            end
         }
     },
 
@@ -113,8 +154,7 @@ LOCATIONS = {
         { -- 2: Run to east mine
             area = { x = 3214, y = 3376, z = 0, range = { 12, 12 } },
             next = function()
-                API.DoAction_WalkerW(ORES:RandomiseTile(ORES.Mithril.Spot.x, ORES.Mithril.Spot.y, ORES.Mithril.Spot.z, 3,
-                    2))
+                API.DoAction_WalkerW(ORES:RandomiseTile(3287, 3363, 0, 3, 2))
             end
         }
     },
@@ -147,6 +187,7 @@ ORES.Copper = { -- Copper - Burthorpe Mine
         z = 0
     },
     UseOreBox = true,
+    OreBoxIds = ORE_BOX,
     Mine = function(self)
         ORES:Mine(self)
     end,
@@ -169,6 +210,7 @@ ORES.Tin = { -- Tin - Burthorpe Mine
     Level = 1,
     Spot = ORES.Copper.Spot,
     UseOreBox = true,
+    OreBoxIds = ORE_BOX,
     Mine = function(self)
         ORES:Mine(self)
     end,
@@ -185,6 +227,7 @@ ORES.Iron = { -- Iron - Burthorpe Mine
         z = 0
     },
     UseOreBox = true,
+    OreBoxIds = ORE_BOX,
     Mine = function(self)
         ORES:Mine(self)
     end,
@@ -212,6 +255,7 @@ ORES.Coal = { -- Coal - Dwarven Mine
         z = 0
     },
     UseOreBox = true,
+    OreBoxIds = ORE_BOX,
     Mine = function(self)
         ORES:Mine(self)
     end,
@@ -237,6 +281,7 @@ ORES.Mithril = { -- Mithril - Varrock East Mine
         z = 0
     },
     UseOreBox = true,
+    OreBoxIds = ORE_BOX,
     Mine = function(self)
         ORES:Mine(self)
     end,
@@ -251,6 +296,7 @@ ORES.Adamantite = { -- Adamantite - Varrock East Mine
     Level = 40,
     Spot = ORES.Mithril.Spot,
     UseOreBox = true,
+    OreBoxIds = ORE_BOX,
     Mine = function(self)
         ORES:Mine(self)
     end,
@@ -269,6 +315,7 @@ ORES.Luminite = { -- Luminite - Dwarven Mine
         z = 0
     },
     UseOreBox = true,
+    OreBoxIds = ORE_BOX,
     Mine = function(self)
         ORES:Mine(self)
     end,
@@ -296,6 +343,7 @@ ORES.Runite = { -- Runite - Wilderness (by zammy mage)
         z = 0
     },
     UseOreBox = true,
+    OreBoxIds = ORE_BOX,
     Mine = function(self)
         ORES:Mine(self)
     end,
@@ -321,6 +369,7 @@ ORES.Orichalcite = { -- Orichalcite - Mining Guild
         z = 0
     },
     UseOreBox = true,
+    OreBoxIds = ORE_BOX,
     Mine = function(self)
         ORES:Mine(self)
     end,
@@ -362,6 +411,7 @@ ORES.Drakolith = { -- Drakolith - Wilderness (near lodestone)
         z = 0
     },
     UseOreBox = true,
+    OreBoxIds = ORE_BOX,
     Mine = function(self)
         ORES:Mine(self)
     end,
@@ -390,6 +440,7 @@ ORES.Phasmatite = { -- Phasmatite - East Canifis
         z = 0
     },
     UseOreBox = true,
+    OreBoxIds = ORE_BOX,
     Mine = function(self)
         ORES:Mine(self)
     end,
@@ -418,6 +469,7 @@ ORES.Necrite = { -- Necrite - Wilderness (north of bandit camp)
         z = 0
     },
     UseOreBox = true,
+    OreBoxIds = ORE_BOX,
     Mine = function(self)
         ORES:Mine(self)
     end,
@@ -455,6 +507,7 @@ ORES.Banite = { -- Banite - Deep Wilderness (by Mandrith)
         z = 0
     },
     UseOreBox = true,
+    OreBoxIds = ORE_BOX,
     Mine = function(self)
         ORES:Mine(self)
     end,
@@ -561,6 +614,7 @@ ORES.LightAnimica = { -- Light Animica - Anachronia South-West Mine
         z = 0
     },
     UseOreBox = true,
+    OreBoxIds = ORE_BOX,
     Mine = function(self)
         ORES:Mine(self)
     end,
@@ -593,6 +647,7 @@ ORES.DarkAnimica = { -- Dark Animica - Empty Throne Room
     Level = 90,
     Spot = { x = 2876, y = 12637, z = 2 },
     UseOreBox = true,
+    OreBoxIds = ORE_BOX,
     Mine = function(self)
         ORES:Mine(self)
     end,
@@ -629,6 +684,107 @@ ORES.DarkAnimica = { -- Dark Animica - Empty Throne Room
     end
 }
 
+----- GEMS
+ORES.CommonGem = {
+    OreID = GEM_IDS,
+    RockIDs = { 113036, 113037 },
+    Level = 1,
+    Spot = {
+        x = 3299,
+        y = 3311,
+        z = 0
+    },
+    UseOreBox = false,
+    Mine = function(self)
+        ORES:Mine(self)
+    end,
+    Steps = LOCATIONS.AlKharidMine,
+    Bank = function()
+        LODESTONE.Burthope()
+        API.WaitUntilMovingandAnimEnds()
+
+        ORES:GemBank(BANKS.Burthorpe, { 12 })
+    end
+}
+ORES.UncommonGem = {
+    OreID = GEM_IDS,
+    RockIDs = { 113047, 113048, 113049 },
+    Level = 20,
+    Spot = {
+        x = 3299,
+        y = 3311,
+        z = 0
+    },
+    UseOreBox = true,
+    OreBoxIds = GEM_BAG,
+    Mine = function(self)
+        ORES:Mine(self)
+    end,
+    Steps = LOCATIONS.AlKharidMine,
+    Bank = ORES.CommonGem.Bank
+}
+ORES.PreciousGem = {
+    OreID = GEM_IDS,
+    RockIDs = { 113062, 113063, 113064 },
+    Level = 25,
+    Spot = {
+        x = 1186,
+        y = 4509,
+        z = 0
+    },
+    UseOreBox = true,
+    OreBoxIds = GEM_BAG,
+    Mine = function(self)
+        ORES:Mine(self)
+    end,
+    Steps = concatTables(
+        LOCATIONS.AlKharidMine,
+        {
+            { -- Click mysterious entrance 3300, 3307, 0
+                area = { x = 3300, y = 3307, z = 0, range = { 20, 20 } },
+                check = function()
+                    return #API.GetAllObjArray1({ 52860 }, 25, { 0 }) > 0
+                end,
+                next = function()
+                    API.DoAction_Object1(0x39, API.OFF_ACT_GeneralObject_route0, { 52860 }, 25)
+                    waitForMovement()
+                end
+            }
+        }
+    ),
+    Bank = ORES.CommonGem.Bank
+}
+ORES.PrifGem = {
+    OreID = GEM_IDS,
+    RockIDs = { 112998, 112999 },
+    Level = 75,
+    Spot = {
+        x = 2235,
+        y = 3320,
+        z = 1
+    },
+    UseOreBox = true,
+    OreBoxIds = GEM_BAG,
+    Mine = function(self)
+        ORES:Mine(self)
+    end,
+    Steps = {
+        {
+            area = nil,
+            next = function()
+                LODESTONE.Prifddinas()
+                API.WaitUntilMovingandAnimEnds()
+            end
+        },
+        {
+            area = { x = 2208, y = 3360, z = 1, range = { 200, 200 } }
+        }
+    },
+    Bank = function()
+        ORES:GemBank(BANKS.Prif, { 12 })
+    end
+}
+
 ----- FUNCTIONS
 function ORES:Traverse(ore)
     local start = 1
@@ -651,9 +807,10 @@ function ORES:Traverse(ore)
 
         if step.check ~= nil then
             local attempts = 0
+            local max_attempts = step.attempts ~= nil and step.attempts or 10
             print("Waiting for check condition")
             while step.check() == false do
-                if attempts >= step.attempts then
+                if attempts >= max_attempts then
                     print("Max attempts exceeded, aborting.")
                     API.Write_LoopyLoop(false)
                     break
@@ -708,6 +865,42 @@ function ORES:AlKharidBank()
     API.WaitUntilMovingEnds()
 end
 
+function ORES:GemBank(bankId, type)
+    if #API.GetAllObjArray1(bankId, 25, type) == 0 then
+        print("Bank not found nearby")
+        return
+    end
+
+    local attempts = 0
+    while not API.BankOpen2() do
+        if attempts >= 10 then
+            print("Failed to open bank after 10 attempts.")
+            return
+        end
+
+        API.DoAction_Object1(0x5, API.OFF_ACT_GeneralObject_route1, bankId, 25)
+        API.WaitUntilMovingEnds(2, 20)
+
+        attempts = attempts + 1
+    end
+
+    if ORES.Selected.UseOreBox then
+        print("Emptying gem bag")
+        for _, id in ipairs(GEM_BAG) do
+            API.DoAction_Bank_Inv(id, EMPTY_GEM_BAG, API.OFF_ACT_GeneralInterface_route)
+            API.RandomSleep2(80, 100, 500)
+        end
+    end
+
+    print("Depositing gems")
+    for _, id in ipairs(GEM_IDS) do
+        if API.InvItemcount_1(id) > 0 then
+            API.DoAction_Bank_Inv(id, DEPOSIT_ALL, API.OFF_ACT_GeneralInterface_route)
+            API.RandomSleep2(80, 100, 500)
+        end
+    end
+end
+
 function ORES:CheckArea(ore, range)
     return API.PInArea(ore.Spot.x, range, ore.Spot.y, range, ore.Spot.z)
 end
@@ -746,7 +939,9 @@ function ORES:SelectOre()
 end
 
 function ORES:HasOreBox()
-    return API.InvItemFound2(ORE_BOX)
+    local ORE_BOX_IDS = (ORES.Selected.OreBoxIds ~= nil) and ORES.Selected.OreBoxIds or ORE_BOX
+
+    return API.InvItemFound2(ORE_BOX_IDS)
 end
 
 function ORES:FillOreBox()
@@ -755,8 +950,10 @@ function ORES:FillOreBox()
         return
     end
 
-    API.DoAction_Inventory2(ORE_BOX, 0, 1, API.OFF_ACT_GeneralInterface_route)
-    API.RandomSleep2(1200, 300, 500)
+    local ORE_BOX_IDS = (ORES.Selected.OreBoxIds ~= nil) and ORES.Selected.OreBoxIds or ORE_BOX
+
+    API.DoAction_Inventory2(ORE_BOX_IDS, 0, 1, API.OFF_ACT_GeneralInterface_route)
+    API.RandomSleep2(800, 300, 500)
 end
 
 function ORES:PickRock(ore, type)
@@ -788,7 +985,7 @@ function ORES:ClickRock(rock)
 
     if API.DoAction_Object2(0x3a, API.OFF_ACT_GeneralObject_route0, { rock.Id }, 25, WPOINT.new(tile.x, tile.y, tile.z)) then
         ORES.CurrentRock = rock
-        API.RandomSleep2(300, 500, 600)
+        API.RandomSleep2(100, 500, 600)
     end
 end
 
@@ -809,7 +1006,7 @@ function ORES:Mine(ore)
         ORES:ClickRock(rock)
     end
 
-    API.RandomSleep2(1000, 600, 800)
+    API.RandomSleep2(80, 200, 300)
 end
 
 return ORES
