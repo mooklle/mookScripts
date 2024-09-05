@@ -12,7 +12,7 @@ local LODESTONE = require("../lodestones")
 --- LightAnimica, DarkAnimica
 --- 
 --- Gems: CommonGem, UncommonGem, PreciousGem, PrifGem
-local SELECTED_ORE = "PrifGem"
+local SELECTED_ORE = nil
 local LEVEL_MAP = {
     [1]  = "Copper",
     [5]  = "Tin",
