@@ -4,7 +4,7 @@
 @description AIO Mining Script
 @author mookl
 @date 30/08/2024
-@version 1.1.1
+@version 1.1.2
 
 Edit LEVEL_MAP to change mining targets.
 Automatically navigates to mining spot and banks ores.
@@ -20,7 +20,7 @@ ADDITIONAL CREDITS
 
 --]]
 
-local version = "v1.1.1"
+local version = "v1.1.2"
 local API = require("api")
 local MINER = require("data/ores")
 

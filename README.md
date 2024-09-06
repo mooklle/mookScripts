@@ -1,4 +1,4 @@
-# MookMiner v1.1.1
+# MookMiner v1.1.2
 [![License: GPL 2.0](https://img.shields.io/badge/License-GPL%202.0-brightgreen.svg)](https://opensource.org/license/gpl-2-0)
 ![GitHub last commit](https://img.shields.io/github/last-commit/mooklle/mookScripts?color=4ba8a2)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/t/mooklle/mookScripts?color=c247c2)
@@ -46,6 +46,11 @@ Currently supports:
   - From bank initially, eventually buying off GE
 
 #### Changelog
+v1.1.2
+```
+- Fixed Light Animica (apparently I forgot to add the rock IDs)
+```
+
 v1.1.1
 ```
 - Replaced progress bar with a custom one because I hated the built-in ones
