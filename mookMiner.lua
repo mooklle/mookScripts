@@ -4,14 +4,15 @@
 @description AIO Mining Script
 @author mookl
 @date 30/08/2024
-@version 1.0.3
+@version 1.1.0
 
-Edit SELECTED_ORE in ores.lua to configure which ore to mine. If nil, auto-selects based on level.
 Edit LEVEL_MAP to change mining targets.
 Automatically navigates to mining spot and banks ores.
 
 TO DO:
 - Add banking toggle (drop ores if disabled)
+- Add pickaxe switching
+- Add primal ores
 
 ADDITIONAL CREDITS
   Dead    - Lodestones
@@ -19,52 +20,57 @@ ADDITIONAL CREDITS
 
 --]]
 
+local version = "v1.1.0"
 local API = require("api")
-local ORES = require("data/ores")
+local MINER = require("data/ores")
 
-API.SetDrawTrackedSkills(true)
 API.SetMaxIdleTime(15)
+MINER.Version = version
 
 while API.Read_LoopyLoop() do
     API.DoRandomEvents()
     math.randomseed(os.time())
-    ORES:SelectOre()
+    MINER:SelectOre()
+    MINER:DrawGui()
 
-    if ORES.Selected == nil then
+    if MINER.Selected == nil then
         print("Selected ore must not be nil")
         break
     end
 
-    if ORES.Selected.Bank == nil then
+    if MINER.Selected.Bank == nil then
         goto mine
     end
 
     if API.InvFull_() then
+        MINER:SetStatus("Checking ore box")
         print("Inventory full, checking ore box")
-        if ORES.Selected.UseOreBox and ORES:HasOreBox() then
-            ORES:FillOreBox()
+        if MINER.Selected.UseOreBox and MINER:HasOreBox() then
+            MINER:FillOreBox()
 
             if API.InvFull_() then
                 print("Ore box full, banking")
-                ORES.Selected:Bank()
+                MINER:SetStatus("Banking")
+                MINER.Selected:Bank()
             end
         else
-            ORES.Selected:Bank()
+            MINER:SetStatus("Banking")
+            MINER.Selected:Bank()
         end
 
         
         goto continue
     end
 
-    if not API.PInArea(ORES.Selected.Spot.x, 25, ORES.Selected.Spot.y, 25, ORES.Selected.Spot.z) 
-        and not API.CheckAnim(120) and not API.ReadPlayerMovin2() then
+    ::mine::
+    if not API.PInArea(MINER.Selected.Spot.x, 12, MINER.Selected.Spot.y, 12, MINER.Selected.Spot.z) 
+        and not API.ReadPlayerMovin2() then
         print("Traversing to ore location")
-        ORES:Traverse(ORES.Selected)
+        MINER:Traverse(MINER.Selected)
         goto continue
     end
 
-    ::mine::
-    ORES.Selected:Mine()
+    MINER.Selected:Mine()
 
     ::continue::
     API.RandomSleep2(80, 100, 300)

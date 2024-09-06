@@ -2,17 +2,15 @@ local API = require("../api")
 local LODESTONE = require("../lodestones")
 
 ----- CONFIG
---- Edit SELECTED_ORE to choose which rock to mine. Either specify one of the entries in ORES, or set to nil to use LEVEL_MAP instead.
 --- Edit LEVEL_MAP to choose which ores to mine at which levels. Will automatically switch when it reaches a new threshold.
 
 --- Currently available ores:
---- 
---- Copper, Tin, Iron, Coal, Mithril, Adamantite, Luminite, Runite, 
+---
+--- Copper, Tin, Iron, Coal, Mithril, Adamantite, Luminite, Runite,
 --- Orichalcite, Drakolith, Phasmatite, Necrite, Banite, Corrupted,
 --- LightAnimica, DarkAnimica
---- 
+---
 --- Gems: CommonGem, UncommonGem, PreciousGem, PrifGem
-local SELECTED_ORE = nil
 local LEVEL_MAP = {
     [1]  = "Copper",
     [5]  = "Tin",
@@ -24,11 +22,11 @@ local LEVEL_MAP = {
     [60] = "Orichalcite",
     [75] = "Phasmatite",
     [81] = "Banite",
-    [89] = "Corrupted",
-    [95] = "DarkAnimica"
+    [89] = "Corrupted"
 }
 
 ----- DATA
+local MINER = {}
 local ORE_BOX = { 44779, 44781, 44783, 44785, 44787, 44789, 44791, 44793, 44795, 44797 }
 local GEM_BAG = { 18338, 31455 }
 local SPARKLE_IDS = { 7164, 7165 }
@@ -42,7 +40,31 @@ local BANKS = {
 local ORES = {}
 local LOCATIONS = {}
 
-local concatTables = function(...)
+local GUI = {}
+local COLOURS = {
+    BG        = ImColor.new(50, 48, 47),
+    WHITE     = ImColor.new(255, 255, 255),
+    TEXT_MAIN = ImColor.new(152, 187, 133),
+    BAR       = ImColor.new(193, 159, 66)
+}
+
+local function formatElapsedTime(startTime, endTime)
+    local elapsedTime = endTime - startTime
+    local hours = math.floor(elapsedTime / 3600)
+    local minutes = math.floor((elapsedTime % 3600) / 60)
+    local seconds = elapsedTime % 60
+    return string.format("%02d:%02d:%02d", hours, minutes, seconds)
+end
+
+local function formatNumber(num)
+    local _, _, i = tostring(num):find('(%d+)[.]?%d*')
+    if i == nil then
+        return "0"
+    end
+    return i:reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "")
+end
+
+local function concatTables(...)
     local conc = {}
 
     for _, t in ipairs({ ... }) do
@@ -54,7 +76,7 @@ local concatTables = function(...)
     return conc
 end
 
-local tableContains = function(table, value)
+local function tableContains(table, value)
     for k, v in ipairs(table) do
         if v == value then
             return true
@@ -64,7 +86,7 @@ local tableContains = function(table, value)
     return false
 end
 
-local waitForMovement = function()
+local function waitForMovement()
     while API.ReadPlayerMovin2() do
         API.RandomSleep2(300, 300, 600)
     end
@@ -72,9 +94,20 @@ local waitForMovement = function()
     API.RandomSleep2(50, 100, 200)
 end
 
+local function miningSkill()
+    return API.GetSkillById(14)
+end
+
 ----- SETUP
-ORES.CurrentRock = nil
-ORES.Selected = nil
+MINER.Status = "Initialising"
+MINER.CurrentRock = nil
+MINER.Selected = "Level-based"
+MINER.Version = nil
+
+local startTime = os.time()
+local startLvl = miningSkill().level
+local startXp = miningSkill().xp
+local rateCheck = nil
 
 ----- LOCATIONS
 LOCATIONS = {
@@ -88,7 +121,7 @@ LOCATIONS = {
         { -- 2: Run to mine entrance
             area = { x = 2899, y = 3544, z = 0, range = { 6, 12 } },
             next = function()
-                API.DoAction_WalkerW(ORES:RandomiseTile(2880, 3503, 0, 3, 3))
+                API.DoAction_WalkerW(MINER:RandomiseTile(2880, 3503, 0, 3, 3))
             end
         },
         { -- 3: Enter mine
@@ -109,13 +142,11 @@ LOCATIONS = {
             area = nil,
             next = function()
                 LODESTONE.AlKharid()
+                API.WaitUntilMovingandAnimEnds()
             end
         },
-        { -- 2: Run to mine
-            area = { x = 3297, y = 3184, z = 0, range = { 30, 30 } },
-            next = function()
-                API.DoAction_WalkerW(ORES:RandomiseTile(3300, 3307, 0, 3, 5))
-            end
+        { -- 2: Run to rocks
+            area = { x = 3297, y = 3184, z = 0, range = { 30, 30 } }
         }
     },
 
@@ -129,7 +160,7 @@ LOCATIONS = {
         { -- 2: Run to dwarven mine entrance
             area = { x = 2967, y = 3403, z = 0, range = { 12, 12 } },
             next = function()
-                API.DoAction_WalkerW(ORES:RandomiseTile(3016, 3449, 0, 2, 2))
+                API.DoAction_WalkerW(MINER:RandomiseTile(3016, 3449, 0, 2, 2))
             end
         },
         { -- 3: Climb down ladder
@@ -154,7 +185,7 @@ LOCATIONS = {
         { -- 2: Run to east mine
             area = { x = 3214, y = 3376, z = 0, range = { 12, 12 } },
             next = function()
-                API.DoAction_WalkerW(ORES:RandomiseTile(3287, 3363, 0, 3, 2))
+                API.DoAction_WalkerW(MINER:RandomiseTile(3287, 3363, 0, 3, 2))
             end
         }
     },
@@ -176,8 +207,10 @@ LOCATIONS = {
     }
 }
 
+MINER.LOCATIONS = LOCATIONS
 ----- ORES
 ORES.Copper = { -- Copper - Burthorpe Mine
+    Name = "Copper",
     OreID = 436,
     RockIDs = { 113026, 113027, 113028 },
     Level = 1,
@@ -189,7 +222,7 @@ ORES.Copper = { -- Copper - Burthorpe Mine
     UseOreBox = true,
     OreBoxIds = ORE_BOX,
     Mine = function(self)
-        ORES:Mine(self)
+        MINER:Mine(self)
     end,
     Steps = LOCATIONS.BurthorpeMine,
     Bank = function(self)
@@ -201,10 +234,11 @@ ORES.Copper = { -- Copper - Burthorpe Mine
 
         API.RandomSleep2(300, 100, 500)
 
-        -- ORES:Traverse(self)
+        -- MINER:Traverse(self)
     end
 }
 ORES.Tin = { -- Tin - Burthorpe Mine
+    Name = "Tin",
     OreID = 438,
     RockIDs = { 113030, 113031 },
     Level = 1,
@@ -212,12 +246,13 @@ ORES.Tin = { -- Tin - Burthorpe Mine
     UseOreBox = true,
     OreBoxIds = ORE_BOX,
     Mine = function(self)
-        ORES:Mine(self)
+        MINER:Mine(self)
     end,
     Steps = LOCATIONS.BurthorpeMine,
     Bank = ORES.Copper.Bank
 }
 ORES.Iron = { -- Iron - Burthorpe Mine
+    Name = "Iron",
     OreID = 440,
     RockIDs = { 113040, 113038, 113039 },
     Level = 10,
@@ -229,7 +264,7 @@ ORES.Iron = { -- Iron - Burthorpe Mine
     UseOreBox = true,
     OreBoxIds = ORE_BOX,
     Mine = function(self)
-        ORES:Mine(self)
+        MINER:Mine(self)
     end,
     Steps = concatTables(
         LOCATIONS.BurthorpeMine,
@@ -240,12 +275,13 @@ ORES.Iron = { -- Iron - Burthorpe Mine
         }
     ),
     Bank = function(self)
-        API.DoAction_WalkerW(ORES:RandomiseTile(ORES.Copper.Spot.x, ORES.Copper.Spot.y, ORES.Copper.Spot.z, 3, 3))
+        API.DoAction_WalkerW(MINER:RandomiseTile(ORES.Copper.Spot.x, ORES.Copper.Spot.y, ORES.Copper.Spot.z, 3, 3))
         ORES.Copper:Bank()
-        -- ORES:Traverse(self)
+        -- MINER:Traverse(self)
     end
 }
 ORES.Coal = { -- Coal - Dwarven Mine
+    Name = "Coal",
     OreID = 453,
     RockIDs = { 113042, 113041, 113043 },
     Level = 20,
@@ -257,7 +293,7 @@ ORES.Coal = { -- Coal - Dwarven Mine
     UseOreBox = true,
     OreBoxIds = ORE_BOX,
     Mine = function(self)
-        ORES:Mine(self)
+        MINER:Mine(self)
     end,
     Steps = concatTables(
         LOCATIONS.DwarvenMine,
@@ -268,10 +304,31 @@ ORES.Coal = { -- Coal - Dwarven Mine
         }
     ),
     Bank = function()
-        ORES:DwarvenMineBank()
+        MINER:DwarvenMineBank()
+    end
+}
+ORES.Silver = { -- Silver - Al Kharid Mine
+    Name = "Silver",
+    OreID = 442,
+    RockIDs = { 113045, 113046 },
+    Level = 20,
+    Spot = {
+        x = 3300,
+        y = 3289,
+        z = 0
+    },
+    UseOreBox = true,
+    OreBoxIds = ORE_BOX,
+    Mine = function(self)
+        MINER:Mine(self)
+    end,
+    Steps = LOCATIONS.AlKharidMine,
+    Bank = function()
+        MINER:AlKharidBank()
     end
 }
 ORES.Mithril = { -- Mithril - Varrock East Mine
+    Name = "Mithril",
     OreID = 447,
     RockIDs = { 113051, 113052, 113050 },
     Level = 30,
@@ -283,14 +340,15 @@ ORES.Mithril = { -- Mithril - Varrock East Mine
     UseOreBox = true,
     OreBoxIds = ORE_BOX,
     Mine = function(self)
-        ORES:Mine(self)
+        MINER:Mine(self)
     end,
     Steps = LOCATIONS.VarrockEast,
     Bank = function()
-        ORES:AlKharidBank()
+        MINER:AlKharidBank()
     end
 }
 ORES.Adamantite = { -- Adamantite - Varrock East Mine
+    Name = "Adamantite",
     OreID = 449,
     RockIDs = { 113055, 113053 },
     Level = 40,
@@ -298,14 +356,15 @@ ORES.Adamantite = { -- Adamantite - Varrock East Mine
     UseOreBox = true,
     OreBoxIds = ORE_BOX,
     Mine = function(self)
-        ORES:Mine(self)
+        MINER:Mine(self)
     end,
     Steps = LOCATIONS.VarrockEast,
     Bank = function()
-        ORES:AlKharidBank()
+        MINER:AlKharidBank()
     end
 }
 ORES.Luminite = { -- Luminite - Dwarven Mine
+    Name = "Luminite",
     OreID = 44820,
     RockIDs = { 113056, 113057, 113058 },
     Level = 40,
@@ -317,7 +376,7 @@ ORES.Luminite = { -- Luminite - Dwarven Mine
     UseOreBox = true,
     OreBoxIds = ORE_BOX,
     Mine = function(self)
-        ORES:Mine(self)
+        MINER:Mine(self)
     end,
     Steps = concatTables(
         LOCATIONS.DwarvenMine,
@@ -328,12 +387,33 @@ ORES.Luminite = { -- Luminite - Dwarven Mine
         }
     ),
     Bank = function(self)
-        API.DoAction_WalkerW(ORES:RandomiseTile(ORES.Coal.Spot.x, ORES.Coal.Spot.y, ORES.Coal.Spot.z, 3, 3)) -- Fails to start moving without running north a bit first
+        API.DoAction_WalkerW(MINER:RandomiseTile(ORES.Coal.Spot.x, ORES.Coal.Spot.y, ORES.Coal.Spot.z, 3, 3)) -- Fails to start moving without running north a bit first
         API.WaitUntilMovingEnds()
-        ORES:DwarvenMineBank()
+        MINER:DwarvenMineBank()
+    end
+}
+ORES.Gold = { -- Gold - Al Kharid Mine
+    Name = "Gold",
+    OreID = 444,
+    RockIDs = { 113059, 113061, 113060 },
+    Level = 40,
+    Spot = {
+        x = 3300,
+        y = 3289,
+        z = 0
+    },
+    UseOreBox = true,
+    OreBoxIds = ORE_BOX,
+    Mine = function(self)
+        MINER:Mine(self)
+    end,
+    Steps = LOCATIONS.AlKharidMine,
+    Bank = function()
+        MINER:AlKharidBank()
     end
 }
 ORES.Runite = { -- Runite - Wilderness (by zammy mage)
+    Name = "Runite",
     OreID = 451,
     RockIDs = { 113125, 113126, 113127 },
     Level = 50,
@@ -345,7 +425,7 @@ ORES.Runite = { -- Runite - Wilderness (by zammy mage)
     UseOreBox = true,
     OreBoxIds = ORE_BOX,
     Mine = function(self)
-        ORES:Mine(self)
+        MINER:Mine(self)
     end,
     Steps = concatTables(
         LOCATIONS.WildernessWall,
@@ -356,10 +436,11 @@ ORES.Runite = { -- Runite - Wilderness (by zammy mage)
         }
     ),
     Bank = function(self)
-        ORES:AlKharidBank()
+        MINER:AlKharidBank()
     end
 }
 ORES.Orichalcite = { -- Orichalcite - Mining Guild
+    Name = "Orichalcite",
     OreID = 44822,
     RockIDs = { 113070, 113069 },
     Level = 60,
@@ -371,7 +452,7 @@ ORES.Orichalcite = { -- Orichalcite - Mining Guild
     UseOreBox = true,
     OreBoxIds = ORE_BOX,
     Mine = function(self)
-        ORES:Mine(self)
+        MINER:Mine(self)
     end,
     Steps = {
         {
@@ -383,7 +464,7 @@ ORES.Orichalcite = { -- Orichalcite - Mining Guild
         {
             area = { x = 2967, y = 3403, z = 0, range = { 25, 25 } },
             next = function()
-                API.DoAction_WalkerW(ORES:RandomiseTile(3018, 3338, 0, 2, 2))
+                API.DoAction_WalkerW(MINER:RandomiseTile(3018, 3338, 0, 2, 2))
             end
         },
         {
@@ -398,10 +479,11 @@ ORES.Orichalcite = { -- Orichalcite - Mining Guild
         }
     },
     Bank = function(self)
-        ORES:AlKharidBank()
+        MINER:AlKharidBank()
     end
 }
 ORES.Drakolith = { -- Drakolith - Wilderness (near lodestone)
+    Name = "Drakolith",
     OreID = 44824,
     RockIDs = { 113131, 113132, 113133 },
     Level = 60,
@@ -413,7 +495,7 @@ ORES.Drakolith = { -- Drakolith - Wilderness (near lodestone)
     UseOreBox = true,
     OreBoxIds = ORE_BOX,
     Mine = function(self)
-        ORES:Mine(self)
+        MINER:Mine(self)
     end,
     Steps = {
         {
@@ -427,10 +509,11 @@ ORES.Drakolith = { -- Drakolith - Wilderness (near lodestone)
         }
     },
     Bank = function(self)
-        ORES:AlKharidBank()
+        MINER:AlKharidBank()
     end
 }
 ORES.Phasmatite = { -- Phasmatite - East Canifis
+    Name = "Phasmatite",
     OreID = 44828,
     RockIDs = { 113139, 113138, 113137 },
     Level = 70,
@@ -442,7 +525,7 @@ ORES.Phasmatite = { -- Phasmatite - East Canifis
     UseOreBox = true,
     OreBoxIds = ORE_BOX,
     Mine = function(self)
-        ORES:Mine(self)
+        MINER:Mine(self)
     end,
     Steps = {
         {
@@ -456,10 +539,11 @@ ORES.Phasmatite = { -- Phasmatite - East Canifis
         }
     },
     Bank = function(self)
-        ORES:AlKharidBank()
+        MINER:AlKharidBank()
     end
 }
 ORES.Necrite = { -- Necrite - Wilderness (north of bandit camp)
+    Name = "Necrite",
     OreID = 44826,
     RockIDs = { 113207, 113206, 113208 },
     Level = 70,
@@ -471,10 +555,10 @@ ORES.Necrite = { -- Necrite - Wilderness (north of bandit camp)
     UseOreBox = true,
     OreBoxIds = ORE_BOX,
     Mine = function(self)
-        ORES:Mine(self)
+        MINER:Mine(self)
     end,
     PickRock = function(self)
-        return ORES:PickRock(self, 12)
+        return MINER:PickRock(self, 12)
     end,
     Steps = {
         {
@@ -486,7 +570,7 @@ ORES.Necrite = { -- Necrite - Wilderness (north of bandit camp)
         {
             area = { x = 3143, y = 3635, z = 0, range = { 25, 25 } },
             next = function()
-                API.DoAction_WalkerW(ORES:RandomiseTile(3115, 3752, 0, 3, 3))
+                API.DoAction_WalkerW(MINER:RandomiseTile(3115, 3752, 0, 3, 3))
             end
         },
         {
@@ -494,10 +578,11 @@ ORES.Necrite = { -- Necrite - Wilderness (north of bandit camp)
         }
     },
     Bank = function(self)
-        ORES:AlKharidBank()
+        MINER:AlKharidBank()
     end
 }
 ORES.Banite = { -- Banite - Deep Wilderness (by Mandrith)
+    Name = "Banite",
     OreID = 21778,
     RockIDs = { 113140, 113141, 113142 },
     Level = 80,
@@ -509,7 +594,7 @@ ORES.Banite = { -- Banite - Deep Wilderness (by Mandrith)
     UseOreBox = true,
     OreBoxIds = ORE_BOX,
     Mine = function(self)
-        ORES:Mine(self)
+        MINER:Mine(self)
     end,
     Steps = {
         {
@@ -521,7 +606,7 @@ ORES.Banite = { -- Banite - Deep Wilderness (by Mandrith)
         {
             area = { x = 3067, y = 3505, z = 0, range = { 8, 8 } },
             next = function()
-                API.DoAction_WalkerW(ORES:RandomiseTile(3094, 3475, 0, 3, 3))
+                API.DoAction_WalkerW(MINER:RandomiseTile(3094, 3475, 0, 3, 3))
             end
         },
         {
@@ -537,7 +622,7 @@ ORES.Banite = { -- Banite - Deep Wilderness (by Mandrith)
         {
             area = { x = 3154, y = 3924, z = 0, range = { 10, 10 } },
             next = function()
-                API.DoAction_WalkerW(ORES:RandomiseTile(3158, 3949, 0, 3, 3))
+                API.DoAction_WalkerW(MINER:RandomiseTile(3158, 3949, 0, 3, 3))
             end
         },
         {
@@ -566,11 +651,12 @@ ORES.Banite = { -- Banite - Deep Wilderness (by Mandrith)
             API.WaitUntilMovingEnds()
         else
             print("Error reaching bank, attempting to traverse")
-            ORES:Traverse(self)
+            MINER:Traverse(self)
         end
     end,
 }
 ORES.Corrupted = { -- Corrupted (Seren Stone) - Prifddinas
+    Name = "Seren Stone",
     OreID = 32262,
     RockIDs = { 113016 },
     Level = 89,
@@ -581,15 +667,16 @@ ORES.Corrupted = { -- Corrupted (Seren Stone) - Prifddinas
     },
     UseOreBox = false,
     Mine = function(self)
+        MINER:SetStatus("Mining")
         if API.CheckAnim(50) or API.ReadPlayerMovin2() then
             return
         end
 
         local rock = self:PickRock()
-        ORES:ClickRock(rock)
+        MINER:ClickRock(rock)
     end,
     PickRock = function(self)
-        return ORES.CurrentRock or API.GetAllObjArray1(self.RockIDs, 25, { 12 })[1]
+        return MINER.CurrentRock or API.GetAllObjArray1(self.RockIDs, 25, { 12 })[1]
     end,
     Steps = {
         {
@@ -605,6 +692,7 @@ ORES.Corrupted = { -- Corrupted (Seren Stone) - Prifddinas
     }
 }
 ORES.LightAnimica = { -- Light Animica - Anachronia South-West Mine
+    Name = "Light Animica",
     OreID = 44830,
     RockIDs = {},
     Level = 90,
@@ -616,7 +704,7 @@ ORES.LightAnimica = { -- Light Animica - Anachronia South-West Mine
     UseOreBox = true,
     OreBoxIds = ORE_BOX,
     Mine = function(self)
-        ORES:Mine(self)
+        MINER:Mine(self)
     end,
     Steps = {
         {
@@ -629,7 +717,7 @@ ORES.LightAnimica = { -- Light Animica - Anachronia South-West Mine
         {
             area = { x = 5430, y = 2339, z = 0, range = { 30, 30 } },
             next = function()
-                API.DoAction_WalkerW(ORES:RandomiseTile(5387, 2336, 0, 3, 3))
+                API.DoAction_WalkerW(MINER:RandomiseTile(5387, 2336, 0, 3, 3))
                 API.WaitUntilMovingEnds()
             end
         },
@@ -638,10 +726,11 @@ ORES.LightAnimica = { -- Light Animica - Anachronia South-West Mine
         }
     },
     Bank = function(self)
-        ORES:AlKharidBank()
+        MINER:AlKharidBank()
     end
 }
 ORES.DarkAnimica = { -- Dark Animica - Empty Throne Room
+    Name = "Dark Animica",
     OreID = 44832,
     RockIDs = { 113022, 113021, 113020 },
     Level = 90,
@@ -649,7 +738,7 @@ ORES.DarkAnimica = { -- Dark Animica - Empty Throne Room
     UseOreBox = true,
     OreBoxIds = ORE_BOX,
     Mine = function(self)
-        ORES:Mine(self)
+        MINER:Mine(self)
     end,
     Steps = {
         {
@@ -661,7 +750,7 @@ ORES.DarkAnimica = { -- Dark Animica - Empty Throne Room
         {
             area = { x = 3214, y = 3376, z = 0, range = { 100, 100 } },
             next = function()
-                API.DoAction_WalkerW(ORES:RandomiseTile(3378, 3404, 0, 4, 4))
+                API.DoAction_WalkerW(MINER:RandomiseTile(3378, 3404, 0, 4, 4))
             end
         },
         {
@@ -680,12 +769,13 @@ ORES.DarkAnimica = { -- Dark Animica - Empty Throne Room
         }
     },
     Bank = function(self)
-        ORES:AlKharidBank()
+        MINER:AlKharidBank()
     end
 }
 
 ----- GEMS
-ORES.CommonGem = {
+ORES.CommonGem = { -- Common Gem Rock - Al Kharid Mine
+    Name = "Common Gem Rock",
     OreID = GEM_IDS,
     RockIDs = { 113036, 113037 },
     Level = 1,
@@ -696,17 +786,18 @@ ORES.CommonGem = {
     },
     UseOreBox = false,
     Mine = function(self)
-        ORES:Mine(self)
+        MINER:Mine(self)
     end,
     Steps = LOCATIONS.AlKharidMine,
     Bank = function()
         LODESTONE.Burthope()
         API.WaitUntilMovingandAnimEnds()
 
-        ORES:GemBank(BANKS.Burthorpe, { 12 })
+        MINER:GemBank(BANKS.Burthorpe, { 12 })
     end
 }
-ORES.UncommonGem = {
+ORES.UncommonGem = { -- Uncommon Gem Rock - Al Kharid Mine
+    Name = "Uncommon Gem Rock",
     OreID = GEM_IDS,
     RockIDs = { 113047, 113048, 113049 },
     Level = 20,
@@ -718,12 +809,13 @@ ORES.UncommonGem = {
     UseOreBox = true,
     OreBoxIds = GEM_BAG,
     Mine = function(self)
-        ORES:Mine(self)
+        MINER:Mine(self)
     end,
     Steps = LOCATIONS.AlKharidMine,
     Bank = ORES.CommonGem.Bank
 }
-ORES.PreciousGem = {
+ORES.PreciousGem = { -- Precious Gem Rock - Al Kharid Mine Resource Dungeon
+    Name = "Precious Gem Rock",
     OreID = GEM_IDS,
     RockIDs = { 113062, 113063, 113064 },
     Level = 25,
@@ -735,26 +827,36 @@ ORES.PreciousGem = {
     UseOreBox = true,
     OreBoxIds = GEM_BAG,
     Mine = function(self)
-        ORES:Mine(self)
+        MINER:Mine(self)
     end,
-    Steps = concatTables(
-        LOCATIONS.AlKharidMine,
+    Steps = {
+        { -- 1: TP -> Al Kharid
+            area = nil,
+            next = function()
+                LODESTONE.AlKharid()
+            end
+        },
         {
-            { -- Click mysterious entrance 3300, 3307, 0
-                area = { x = 3300, y = 3307, z = 0, range = { 20, 20 } },
-                check = function()
-                    return #API.GetAllObjArray1({ 52860 }, 25, { 0 }) > 0
-                end,
-                next = function()
-                    API.DoAction_Object1(0x39, API.OFF_ACT_GeneralObject_route0, { 52860 }, 25)
-                    waitForMovement()
-                end
-            }
+            area = { x = 3297, y = 3184, z = 0, range = { 30, 30 } },
+            next = function()
+                API.DoAction_WalkerW(MINER:RandomiseTile(3300, 3307, 0, 2, 3))
+            end
+        },
+        { -- Click mysterious entrance 3300, 3307, 0
+            area = { x = 3300, y = 3307, z = 0, range = { 20, 20 } },
+            check = function()
+                return #API.GetAllObjArray1({ 52860 }, 25, { 0 }) > 0
+            end,
+            next = function()
+                API.DoAction_Object1(0x39, API.OFF_ACT_GeneralObject_route0, { 52860 }, 25)
+                waitForMovement()
+            end
         }
-    ),
+    },
     Bank = ORES.CommonGem.Bank
 }
-ORES.PrifGem = {
+ORES.PrifGem = { -- Prifddinas Gem Rock - Prifddinas
+    Name = "Prifddinas Gem Rock",
     OreID = GEM_IDS,
     RockIDs = { 112998, 112999 },
     Level = 75,
@@ -766,7 +868,7 @@ ORES.PrifGem = {
     UseOreBox = true,
     OreBoxIds = GEM_BAG,
     Mine = function(self)
-        ORES:Mine(self)
+        MINER:Mine(self)
     end,
     Steps = {
         {
@@ -781,12 +883,22 @@ ORES.PrifGem = {
         }
     },
     Bank = function()
-        ORES:GemBank(BANKS.Prif, { 12 })
+        MINER:GemBank(BANKS.Prif, { 12 })
     end
 }
 
+MINER.ORES = ORES
 ----- FUNCTIONS
-function ORES:Traverse(ore)
+function MINER:GetStatus()
+    return MINER.Status
+end
+
+function MINER:SetStatus(str)
+    MINER.Status = str
+    MINER:DrawGui()
+end
+
+function MINER:Traverse(ore)
     local start = 1
 
     for i, step in ipairs(ore.Steps) do
@@ -797,11 +909,14 @@ function ORES:Traverse(ore)
     end
 
     for i = start, #ore.Steps do
+        MINER:SetStatus("Traversal Step " .. tostring(i) .. "/" .. tostring(#ore.Steps))
+        print("Traversal step " .. tostring(i) .. " of " .. tostring(#ore.Steps))
+
         local step = ore.Steps[i]
 
         if i == #ore.Steps and step.next == nil then
             print("Moving to final spot")
-            API.DoAction_WalkerW(ORES:RandomiseTile(ore.Spot.x, ore.Spot.y, ore.Spot.z, 2, 2))
+            API.DoAction_WalkerW(MINER:RandomiseTile(ore.Spot.x, ore.Spot.y, ore.Spot.z, 2, 2))
             break
         end
 
@@ -820,12 +935,14 @@ function ORES:Traverse(ore)
             end
             print("Check succeeded")
         else
-            API.WaitUntilMovingandAnimEnds()
+            waitForMovement()
         end
 
-        print("Traversal step " .. tostring(i) .. " of " .. tostring(#ore.Steps))
-
         if step.area == nil or API.PInArea(step.area.x, step.area.range[1], step.area.y, step.area.range[2], step.area.z) then
+            if API.CheckAnim(50) then
+                API.DoAction_WalkerW(API.PlayerCoord()) -- if currently mining, click ground under player to cancel it before TP
+                API.RandomSleep2(300, 200, 600)
+            end
             step:next()
         else
             print("Not in expected area, aborting traversal")
@@ -839,8 +956,8 @@ function ORES:Traverse(ore)
     print("Finished traversing")
 end
 
-function ORES:DwarvenMineBank()
-    API.DoAction_WalkerW(ORES:RandomiseTile(3013, 9814, 0, 2, 2))
+function MINER:DwarvenMineBank()
+    API.DoAction_WalkerW(MINER:RandomiseTile(3013, 9814, 0, 2, 2))
 
     local attempts = 0
     while #API.GetAllObjArray1({ 113262 }, 25, { 12 }) == 0 do
@@ -857,7 +974,7 @@ function ORES:DwarvenMineBank()
     API.WaitUntilMovingEnds()
 end
 
-function ORES:AlKharidBank()
+function MINER:AlKharidBank()
     LODESTONE.AlKharid()
     API.WaitUntilMovingandAnimEnds()
 
@@ -865,7 +982,7 @@ function ORES:AlKharidBank()
     API.WaitUntilMovingEnds()
 end
 
-function ORES:GemBank(bankId, type)
+function MINER:GemBank(bankId, type)
     if #API.GetAllObjArray1(bankId, 25, type) == 0 then
         print("Bank not found nearby")
         return
@@ -884,7 +1001,7 @@ function ORES:GemBank(bankId, type)
         attempts = attempts + 1
     end
 
-    if ORES.Selected.UseOreBox then
+    if MINER.Selected.UseOreBox then
         print("Emptying gem bag")
         for _, id in ipairs(GEM_BAG) do
             API.DoAction_Bank_Inv(id, EMPTY_GEM_BAG, API.OFF_ACT_GeneralInterface_route)
@@ -901,28 +1018,37 @@ function ORES:GemBank(bankId, type)
     end
 end
 
-function ORES:CheckArea(ore, range)
+function MINER:CheckArea(ore, range)
     return API.PInArea(ore.Spot.x, range, ore.Spot.y, range, ore.Spot.z)
 end
 
-function ORES:RandomiseTile(x, y, z, off_x, off_y)
+function MINER:RandomiseTile(x, y, z, off_x, off_y)
     x = x + math.random(-off_x, off_x)
     y = y + math.random(-off_y, off_y)
 
     return WPOINT.new(x, y, z)
 end
 
-function ORES:SelectOre()
-    local ml = API.GetSkillByName("MINING").level
+function MINER:SelectOre()
+    local ml = miningSkill().level
+    local dropdown = GUI.Dropdown.stringsArr[GUI.Dropdown.int_value + 1]
 
-    if SELECTED_ORE ~= nil and ORES[SELECTED_ORE] ~= nil and ORES[SELECTED_ORE].Level <= ml then
-        if ORES.Selected == ORES[SELECTED_ORE] then
-            return
+    if dropdown ~= "" then
+        for _, v in pairs(ORES) do
+            if type(v) ~= "function" and v.Name ~= nil then
+                if v.Name == dropdown then
+                    if MINER.Selected ~= v then
+                        MINER.Selected = v
+                        MINER.CurrentRock = nil
+                        print("Manually mining " .. MINER.Selected.Name)
+                    end
+                    return
+                end
+            end
         end
-        print("Mining manually selected ore: " .. SELECTED_ORE)
-        ORES.Selected = ORES[SELECTED_ORE]
-        return
     end
+
+
 
     local highest = nil
     for k, v in pairs(LEVEL_MAP) do
@@ -932,31 +1058,32 @@ function ORES:SelectOre()
     end
 
     local sel = LEVEL_MAP[highest]
-    if sel ~= nil and ORES.Selected ~= ORES[sel] then
-        ORES.Selected = ORES[sel]
-        print("Mining level: " .. tostring(ml) .. ", auto mining " .. sel)
+    if sel ~= nil and MINER.Selected ~= ORES[sel] then
+        MINER.Selected = ORES[sel]
+        MINER.CurrentRock = nil
+        print("Mining level: " .. tostring(ml) .. ", auto mining " .. MINER.Selected.Name)
     end
 end
 
-function ORES:HasOreBox()
-    local ORE_BOX_IDS = (ORES.Selected.OreBoxIds ~= nil) and ORES.Selected.OreBoxIds or ORE_BOX
+function MINER:HasOreBox()
+    local ORE_BOX_IDS = (MINER.Selected.OreBoxIds ~= nil) and MINER.Selected.OreBoxIds or ORE_BOX
 
     return API.InvItemFound2(ORE_BOX_IDS)
 end
 
-function ORES:FillOreBox()
-    if not ORES:HasOreBox() then
+function MINER:FillOreBox()
+    if not MINER:HasOreBox() then
         print("No ore box found")
         return
     end
 
-    local ORE_BOX_IDS = (ORES.Selected.OreBoxIds ~= nil) and ORES.Selected.OreBoxIds or ORE_BOX
+    local ORE_BOX_IDS = (MINER.Selected.OreBoxIds ~= nil) and MINER.Selected.OreBoxIds or ORE_BOX
 
     API.DoAction_Inventory2(ORE_BOX_IDS, 0, 1, API.OFF_ACT_GeneralInterface_route)
     API.RandomSleep2(800, 300, 500)
 end
 
-function ORES:PickRock(ore, type)
+function MINER:PickRock(ore, type)
     type = type or 0
     local sparkles = API.GetAllObjArray1(SPARKLE_IDS, 25, { 4 })
     local rocks = API.GetAllObjArray1(ore.RockIDs, 25, { type })
@@ -966,13 +1093,14 @@ function ORES:PickRock(ore, type)
             for _, spark in pairs(sparkles) do
                 if math.abs(rock.Tile_XYZ.x - spark.Tile_XYZ.x) < 1 and math.abs(rock.Tile_XYZ.y - spark.Tile_XYZ.y) < 1 then
                     print("Moving to sparkling rock")
+                    MINER:SetStatus("Chasing sparkles")
                     return rock
                 end
             end
         end
     else
-        if ORES.CurrentRock ~= nil and tableContains(ORES.Selected.RockIDs, ORES.CurrentRock.Id) then
-            return ORES.CurrentRock
+        if MINER.CurrentRock ~= nil and tableContains(MINER.Selected.RockIDs, MINER.CurrentRock.Id) then
+            return MINER.CurrentRock
         end
     end
 
@@ -980,19 +1108,19 @@ function ORES:PickRock(ore, type)
     return rocks[1]
 end
 
-function ORES:ClickRock(rock)
+function MINER:ClickRock(rock)
     local tile = rock.Tile_XYZ
 
     if API.DoAction_Object2(0x3a, API.OFF_ACT_GeneralObject_route0, { rock.Id }, 25, WPOINT.new(tile.x, tile.y, tile.z)) then
-        ORES.CurrentRock = rock
+        MINER.CurrentRock = rock
         API.RandomSleep2(100, 500, 600)
     end
 end
 
-function ORES:Mine(ore)
+function MINER:Mine(ore)
     local isAnimating = API.CheckAnim(50)
-    local rock = ore.PickRock == nil and ORES:PickRock(ore) or ore:PickRock()
-    local rockCheck = ORES.CurrentRock ~= nil and rock.Id == ORES.CurrentRock.Id
+    local rock = ore.PickRock == nil and MINER:PickRock(ore) or ore:PickRock()
+    local rockCheck = MINER.CurrentRock ~= nil and rock.Id == MINER.CurrentRock.Id
 
     if isAnimating and rockCheck then
         local stamina = API.LocalPlayer_HoverProgress()
@@ -1000,13 +1128,210 @@ function ORES:Mine(ore)
         if stamina <= (200 + math.random(-15, 10)) then
             print("Clicking at " .. tostring(stamina) .. " stamina")
 
-            ORES:ClickRock(rock)
+            MINER:ClickRock(rock)
         end
     else
-        ORES:ClickRock(rock)
+        MINER:ClickRock(rock)
     end
 
+    MINER:SetStatus("Mining")
     API.RandomSleep2(80, 200, 300)
 end
 
-return ORES
+----- GUI
+local LINE_HEIGHT = 13
+local LINES = 9
+local MARGIN = 16
+local PADDING_Y = 6
+local PADDING_X = 7
+
+local BOX_START = 100
+local BOX_END = BOX_START + (LINE_HEIGHT * LINES) + (PADDING_Y * 2)
+local BOX_WIDTH = 500
+
+local TITLE_START = BOX_START + PADDING_Y
+local TEXT_START = TITLE_START + (LINE_HEIGHT * 2)
+
+local DROPDOWN_POSITION = 250
+
+local function getLineOffset(line)
+    return TEXT_START + (line * LINE_HEIGHT)
+end
+
+GUI.Background = API.CreateIG_answer()
+GUI.Background.box_name = "GuiBackground"
+GUI.Background.box_start = FFPOINT.new(MARGIN, BOX_START, 0)
+GUI.Background.box_size = FFPOINT.new(BOX_WIDTH + MARGIN, BOX_END, 0)
+GUI.Background.colour = COLOURS.BG
+
+GUI.Title = API.CreateIG_answer()
+GUI.Title.box_name = "GuiTitle"
+GUI.Title.box_start = FFPOINT.new(MARGIN + PADDING_X, TITLE_START, 0)
+GUI.Title.string_value = "MookMiner"
+GUI.Title.colour = COLOURS.TEXT_MAIN
+
+GUI.Text = API.CreateIG_answer()
+GUI.Text.box_name = "GuiText"
+GUI.Text.box_start = FFPOINT.new(MARGIN + PADDING_X, TEXT_START, 0)
+GUI.Text.string_value = "Status:\nTarget:\nLevel:\nOre Box:\nXP Gained:\nLvls Gained:\nTTL:"
+GUI.Text.colour = COLOURS.WHITE
+
+-- X pos =  23 + (char_offset * 7)
+-- Y pos = 111 + (line_num * 13)
+GUI.Status = API.CreateIG_answer()
+GUI.Status.box_name = "GuiStatus"
+GUI.Status.box_start = FFPOINT.new(79, getLineOffset(0), 0)
+-- GUI.Status.box_start = FFPOINT.new(114, 124, 0)
+GUI.Status.string_value = ""
+GUI.Status.colour = COLOURS.TEXT_MAIN
+
+GUI.Target = API.CreateIG_answer()
+GUI.Target.box_name = "GuiTarget"
+GUI.Target.box_start = FFPOINT.new(79, getLineOffset(1), 0)
+-- GUI.Mining.box_start = FFPOINT.new(114, 137, 0)
+GUI.Target.string_value = ""
+GUI.Target.colour = COLOURS.TEXT_MAIN
+
+GUI.Level = API.CreateIG_answer()
+GUI.Level.box_name = "GuiLevel"
+GUI.Level.box_start = FFPOINT.new(72, getLineOffset(2), 0)
+-- GUI.Level.box_start = FFPOINT.new(114, 150, 0)
+GUI.Level.string_value = tostring(startLvl)
+GUI.Level.colour = COLOURS.TEXT_MAIN
+
+GUI.OreBox = API.CreateIG_answer()
+GUI.OreBox.box_name = "GuiOreBox"
+GUI.OreBox.box_start = FFPOINT.new(88, getLineOffset(3), 0)
+GUI.OreBox.string_value = ""
+GUI.OreBox.colour = COLOURS.TEXT_MAIN
+
+GUI.XpGain = API.CreateIG_answer()
+GUI.XpGain.box_name = "GuiXpGain"
+GUI.XpGain.box_start = FFPOINT.new(100, getLineOffset(4), 0)
+-- GUI.XpGain.box_start = FFPOINT.new(114, 176, 0)
+GUI.XpGain.string_value = "0"
+GUI.XpGain.colour = COLOURS.TEXT_MAIN
+
+GUI.LvlGain = API.CreateIG_answer()
+GUI.LvlGain.box_name = "GuiLvlGain"
+GUI.LvlGain.box_start = FFPOINT.new(114, getLineOffset(5), 0)
+GUI.LvlGain.string_value = "0"
+GUI.LvlGain.colour = COLOURS.TEXT_MAIN
+
+GUI.TTL = API.CreateIG_answer()
+GUI.TTL.box_name = "GuiTtl"
+GUI.TTL.box_start = FFPOINT.new(58, getLineOffset(6), 0)
+GUI.TTL.string_value = ""
+GUI.TTL.colour = COLOURS.TEXT_MAIN
+
+GUI.ProgBar = API.CreateIG_answer()
+GUI.ProgBar.box_name = "GuiProgBar"
+GUI.ProgBar.box_start = FFPOINT.new(MARGIN, getLineOffset(8), 0)
+-- GUI.ProgBar.box_size = FFPOINT.new(296, 228, 0)
+GUI.ProgBar.colour = COLOURS.BAR
+GUI.ProgBar.radius = 0.5
+
+GUI.Dropdown = API.CreateIG_answer()
+GUI.Dropdown.box_name = "Select ore"
+
+local function getXpRate()
+    if rateCheck == nil then
+        rateCheck = {
+            time = os.time(),
+            xp = miningSkill().xp
+        }
+    end
+
+    local current = {
+        time = os.time(),
+        xp = miningSkill().xp
+    }
+
+    local diff = {
+        time = (current.time - rateCheck.time) / 3600,
+        xp = current.xp - rateCheck.xp
+    }
+
+    if os.time() - rateCheck.time > 60 then
+        rateCheck = current
+    end
+
+    return diff.xp / diff.time
+end
+
+function MINER:DrawGui()
+    local mining = miningSkill()
+
+    local xpRate = getXpRate()
+    local level = mining.level
+    local runtime = formatElapsedTime(startTime, os.time())
+    local xpDiff = formatNumber(mining.xp - startXp)
+    local lvlDiff = level - startLvl
+    local prevXp = API.XPForLevel(level)
+    local reqXp = API.XPForLevel(level + 1)
+    local remXp = reqXp - mining.xp
+    local progress = (mining.xp - prevXp) / (reqXp - prevXp)
+    local ttl = "N/A"
+
+    if xpRate ~= nil and tostring(xpRate) ~= tostring(-0 / 0) and xpRate > 0 then
+        xpDiff = xpDiff .. " (" .. formatNumber(xpRate) .. " xp/h)"
+        local ttl_sec = math.floor(remXp / (xpRate / 3600))
+        ttl = "~" .. formatElapsedTime(os.time(), os.time() + ttl_sec) .. " (" .. formatNumber(remXp) .. " xp)"
+    end
+
+    GUI.Title.string_value   = "MookMiner " .. MINER.Version .. "  |  " .. runtime
+    GUI.Status.string_value  = MINER:GetStatus()
+    GUI.Target.string_value  = MINER.Selected.Name
+    GUI.Level.string_value   = tostring(level)
+    GUI.XpGain.string_value  = xpDiff
+    GUI.LvlGain.string_value = tostring(lvlDiff)
+    GUI.OreBox.string_value  = tostring(MINER:HasOreBox())
+    GUI.TTL.string_value     = ttl
+
+    -- Dropdown
+    local entries            = {
+        ""
+    }
+    for _, v in pairs(ORES) do
+        if type(v) ~= "function" and v.Name ~= nil then
+            table.insert(entries, v.Name)
+        end
+    end
+    table.sort(entries)
+
+    GUI.Dropdown.stringsArr = entries
+    GUI.Dropdown.box_start  = FFPOINT.new(DROPDOWN_POSITION, TITLE_START - 5, 0)
+
+    -- Progress bar
+    local prog_str          = formatNumber(mining.xp) ..
+        "/" .. formatNumber(reqXp) .. " (" .. tostring(math.floor((progress * 100) + 0.5)) .. "%)"
+    local pad_t             = 36 - string.len(prog_str)
+    local pad_l             = math.floor(pad_t / 2)
+    local pad_r             = math.ceil(pad_t / 2)
+
+    for i = 1, pad_l do
+        prog_str = " " .. prog_str
+    end
+
+    for i = 0, pad_r do
+        prog_str = prog_str .. " "
+    end
+
+    GUI.ProgBar.radius = progress
+    GUI.ProgBar.string_value = prog_str
+
+    API.DrawSquareFilled(GUI.Background)
+    API.DrawTextAt(GUI.Title)
+    API.DrawTextAt(GUI.Text)
+    API.DrawTextAt(GUI.Status)
+    API.DrawTextAt(GUI.Target)
+    API.DrawTextAt(GUI.Level)
+    API.DrawTextAt(GUI.XpGain)
+    API.DrawTextAt(GUI.LvlGain)
+    API.DrawTextAt(GUI.OreBox)
+    API.DrawTextAt(GUI.TTL)
+    API.DrawComboBox(GUI.Dropdown, false)
+    API.DrawProgressBar(GUI.ProgBar)
+end
+
+return MINER
