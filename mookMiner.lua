@@ -63,12 +63,12 @@ while API.Read_LoopyLoop() do
     end
 
     ::mine::
-    -- if not API.PInArea(MINER.Selected.Spot.x, 12, MINER.Selected.Spot.y, 12, MINER.Selected.Spot.z) 
-    --     and not API.ReadPlayerMovin2() then
-    --     print("Traversing to ore location")
-    --     MINER:Traverse(MINER.Selected)
-    --     goto continue
-    -- end
+    if not API.PInArea(MINER.Selected.Spot.x, 12, MINER.Selected.Spot.y, 12, MINER.Selected.Spot.z) 
+        and not API.ReadPlayerMovin2() then
+        print("Traversing to ore location")
+        MINER:Traverse(MINER.Selected)
+        goto continue
+    end
 
     MINER.Selected:Mine()
 

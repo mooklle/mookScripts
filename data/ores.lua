@@ -22,7 +22,7 @@ local LEVEL_MAP = {
     [60] = "Orichalcite",
     [75] = "Phasmatite",
     [81] = "Banite",
-    --[89] = "Corrupted",
+    -- [89] = "Corrupted",
     [90] = "LightAnimica"
 }
 
