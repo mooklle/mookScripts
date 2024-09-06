@@ -7,7 +7,7 @@
 An AIO mining script with auto navigation, banking (+ ore box/gem bag), and level-based ore switching.
 
 Currently supports:
-- All core rocks up to Light/Dark Animica
+- All core rocks including primal
 - Gem rocks:
   - Common
   - Uncommon
