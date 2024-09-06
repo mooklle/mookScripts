@@ -4,7 +4,7 @@
 @description AIO Mining Script
 @author mookl
 @date 30/08/2024
-@version 1.1.0
+@version 1.1.1
 
 Edit LEVEL_MAP to change mining targets.
 Automatically navigates to mining spot and banks ores.
@@ -20,7 +20,7 @@ ADDITIONAL CREDITS
 
 --]]
 
-local version = "v1.1.0"
+local version = "v1.1.1"
 local API = require("api")
 local MINER = require("data/ores")
 
@@ -63,12 +63,12 @@ while API.Read_LoopyLoop() do
     end
 
     ::mine::
-    if not API.PInArea(MINER.Selected.Spot.x, 12, MINER.Selected.Spot.y, 12, MINER.Selected.Spot.z) 
-        and not API.ReadPlayerMovin2() then
-        print("Traversing to ore location")
-        MINER:Traverse(MINER.Selected)
-        goto continue
-    end
+    -- if not API.PInArea(MINER.Selected.Spot.x, 12, MINER.Selected.Spot.y, 12, MINER.Selected.Spot.z) 
+    --     and not API.ReadPlayerMovin2() then
+    --     print("Traversing to ore location")
+    --     MINER:Traverse(MINER.Selected)
+    --     goto continue
+    -- end
 
     MINER.Selected:Mine()
 

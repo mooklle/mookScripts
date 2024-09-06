@@ -1,4 +1,4 @@
-# MookMiner v1.1.0
+# MookMiner v1.1.1
 [![License: GPL 2.0](https://img.shields.io/badge/License-GPL%202.0-brightgreen.svg)](https://opensource.org/license/gpl-2-0)
 ![GitHub last commit](https://img.shields.io/github/last-commit/mooklle/mookScripts?color=4ba8a2)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/t/mooklle/mookScripts?color=c247c2)
@@ -46,6 +46,13 @@ Currently supports:
   - From bank initially, eventually buying off GE
 
 #### Changelog
+v1.1.1
+```
+- Replaced progress bar with a custom one because I hated the built-in ones
+- Moved area check to MINER:Mine() to prevent crashing at Al Kharid bank
+- Commented out Seren Stone in the default level map for people without Prif - uncomment it to re-enable
+```
+
 v1.1.0
 ```
 - Added GUI-based ore selection and custom display for status, xp/h, gains, etc

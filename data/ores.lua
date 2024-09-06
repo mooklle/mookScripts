@@ -22,7 +22,8 @@ local LEVEL_MAP = {
     [60] = "Orichalcite",
     [75] = "Phasmatite",
     [81] = "Banite",
-    [89] = "Corrupted"
+    --[89] = "Corrupted",
+    [90] = "LightAnimica"
 }
 
 ----- DATA
@@ -43,6 +44,7 @@ local LOCATIONS = {}
 local GUI = {}
 local COLOURS = {
     BG        = ImColor.new(50, 48, 47),
+    PROG_BG        = ImColor.new(27, 30, 29),
     WHITE     = ImColor.new(255, 255, 255),
     TEXT_MAIN = ImColor.new(152, 187, 133),
     BAR       = ImColor.new(193, 159, 66)
@@ -1118,6 +1120,13 @@ function MINER:ClickRock(rock)
 end
 
 function MINER:Mine(ore)
+    if not API.PInArea(MINER.Selected.Spot.x, 12, MINER.Selected.Spot.y, 12, MINER.Selected.Spot.z) 
+        and not API.ReadPlayerMovin2() then
+        print("Traversing to ore location")
+        MINER:Traverse(MINER.Selected)
+        return
+    end
+
     local isAnimating = API.CheckAnim(50)
     local rock = ore.PickRock == nil and MINER:PickRock(ore) or ore:PickRock()
     local rockCheck = MINER.CurrentRock ~= nil and rock.Id == MINER.CurrentRock.Id
@@ -1140,62 +1149,63 @@ end
 
 ----- GUI
 local LINE_HEIGHT = 13
-local LINES = 9
+local CHAR_WIDTH = 7
+local LINES = 10
 local MARGIN = 16
 local PADDING_Y = 6
-local PADDING_X = 7
+local PADDING_X = CHAR_WIDTH
 
-local BOX_START = 100
-local BOX_END = BOX_START + (LINE_HEIGHT * LINES) + (PADDING_Y * 2)
-local BOX_WIDTH = 500
+local PROG_HEIGHT_LINES = 2
 
-local TITLE_START = BOX_START + PADDING_Y
-local TEXT_START = TITLE_START + (LINE_HEIGHT * 2)
+local BOX_START_Y = 100
+local BOX_END_Y = BOX_START_Y + (LINE_HEIGHT * LINES) + (PADDING_Y * 2) + (LINE_HEIGHT * PROG_HEIGHT_LINES)
+local BOX_WIDTH = 504 -- 72 chars
+local BOX_END_X = MARGIN + BOX_WIDTH + (2 * PADDING_X)
+
+local TITLE_START = BOX_START_Y + PADDING_Y
+local TEXT_START_Y = TITLE_START + (LINE_HEIGHT * 2)
+local TEXT_START_X = MARGIN + PADDING_X
+local PROG_START_Y = BOX_END_Y - (LINE_HEIGHT * PROG_HEIGHT_LINES)
 
 local DROPDOWN_POSITION = 250
 
 local function getLineOffset(line)
-    return TEXT_START + (line * LINE_HEIGHT)
+    return TEXT_START_Y + (line * LINE_HEIGHT)
 end
 
 GUI.Background = API.CreateIG_answer()
 GUI.Background.box_name = "GuiBackground"
-GUI.Background.box_start = FFPOINT.new(MARGIN, BOX_START, 0)
-GUI.Background.box_size = FFPOINT.new(BOX_WIDTH + MARGIN, BOX_END, 0)
+GUI.Background.box_start = FFPOINT.new(MARGIN, BOX_START_Y, 0)
+GUI.Background.box_size = FFPOINT.new(BOX_WIDTH + MARGIN + (PADDING_X * 2), BOX_END_Y, 0)
 GUI.Background.colour = COLOURS.BG
 
 GUI.Title = API.CreateIG_answer()
 GUI.Title.box_name = "GuiTitle"
-GUI.Title.box_start = FFPOINT.new(MARGIN + PADDING_X, TITLE_START, 0)
+GUI.Title.box_start = FFPOINT.new(TEXT_START_X, TITLE_START, 0)
 GUI.Title.string_value = "MookMiner"
 GUI.Title.colour = COLOURS.TEXT_MAIN
 
 GUI.Text = API.CreateIG_answer()
 GUI.Text.box_name = "GuiText"
-GUI.Text.box_start = FFPOINT.new(MARGIN + PADDING_X, TEXT_START, 0)
+GUI.Text.box_start = FFPOINT.new(TEXT_START_X, TEXT_START_Y, 0)
 GUI.Text.string_value = "Status:\nTarget:\nLevel:\nOre Box:\nXP Gained:\nLvls Gained:\nTTL:"
 GUI.Text.colour = COLOURS.WHITE
 
--- X pos =  23 + (char_offset * 7)
--- Y pos = 111 + (line_num * 13)
 GUI.Status = API.CreateIG_answer()
 GUI.Status.box_name = "GuiStatus"
 GUI.Status.box_start = FFPOINT.new(79, getLineOffset(0), 0)
--- GUI.Status.box_start = FFPOINT.new(114, 124, 0)
 GUI.Status.string_value = ""
 GUI.Status.colour = COLOURS.TEXT_MAIN
 
 GUI.Target = API.CreateIG_answer()
 GUI.Target.box_name = "GuiTarget"
 GUI.Target.box_start = FFPOINT.new(79, getLineOffset(1), 0)
--- GUI.Mining.box_start = FFPOINT.new(114, 137, 0)
 GUI.Target.string_value = ""
 GUI.Target.colour = COLOURS.TEXT_MAIN
 
 GUI.Level = API.CreateIG_answer()
 GUI.Level.box_name = "GuiLevel"
 GUI.Level.box_start = FFPOINT.new(72, getLineOffset(2), 0)
--- GUI.Level.box_start = FFPOINT.new(114, 150, 0)
 GUI.Level.string_value = tostring(startLvl)
 GUI.Level.colour = COLOURS.TEXT_MAIN
 
@@ -1208,7 +1218,6 @@ GUI.OreBox.colour = COLOURS.TEXT_MAIN
 GUI.XpGain = API.CreateIG_answer()
 GUI.XpGain.box_name = "GuiXpGain"
 GUI.XpGain.box_start = FFPOINT.new(100, getLineOffset(4), 0)
--- GUI.XpGain.box_start = FFPOINT.new(114, 176, 0)
 GUI.XpGain.string_value = "0"
 GUI.XpGain.colour = COLOURS.TEXT_MAIN
 
@@ -1224,12 +1233,22 @@ GUI.TTL.box_start = FFPOINT.new(58, getLineOffset(6), 0)
 GUI.TTL.string_value = ""
 GUI.TTL.colour = COLOURS.TEXT_MAIN
 
+GUI.ProgBg = API.CreateIG_answer()
+GUI.ProgBg.box_name = "GuiProgBg"
+GUI.ProgBg.box_start = FFPOINT.new(MARGIN, PROG_START_Y, 1)
+GUI.ProgBg.box_size = FFPOINT.new(BOX_END_X, BOX_END_Y, 1)
+GUI.ProgBg.colour = COLOURS.PROG_BG
+
 GUI.ProgBar = API.CreateIG_answer()
 GUI.ProgBar.box_name = "GuiProgBar"
-GUI.ProgBar.box_start = FFPOINT.new(MARGIN, getLineOffset(8), 0)
--- GUI.ProgBar.box_size = FFPOINT.new(296, 228, 0)
+GUI.ProgBar.box_start = FFPOINT.new(MARGIN, PROG_START_Y, 2)
 GUI.ProgBar.colour = COLOURS.BAR
-GUI.ProgBar.radius = 0.5
+
+GUI.ProgStr = API.CreateIG_answer()
+GUI.ProgStr.box_name = "GuiProgStr"
+GUI.ProgStr.box_start = FFPOINT.new(TEXT_START_X, PROG_START_Y + (LINE_HEIGHT / 2), 0)
+GUI.ProgStr.string_value = "progress"
+GUI.ProgStr.colour = COLOURS.WHITE
 
 GUI.Dropdown = API.CreateIG_answer()
 GUI.Dropdown.box_name = "Select ore"
@@ -1303,24 +1322,18 @@ function MINER:DrawGui()
     GUI.Dropdown.box_start  = FFPOINT.new(DROPDOWN_POSITION, TITLE_START - 5, 0)
 
     -- Progress bar
-    local prog_str          = formatNumber(mining.xp) ..
-        "/" .. formatNumber(reqXp) .. " (" .. tostring(math.floor((progress * 100) + 0.5)) .. "%)"
-    local pad_t             = 36 - string.len(prog_str)
-    local pad_l             = math.floor(pad_t / 2)
-    local pad_r             = math.ceil(pad_t / 2)
+    local prog_width = BOX_WIDTH / CHAR_WIDTH
+    local prog_str          = formatNumber(mining.xp) .. "/" .. formatNumber(reqXp) .. " (" .. tostring(math.floor((progress * 100) + 0.5)) .. "%)"
+    local pad            = math.floor((prog_width - string.len(prog_str)) / 2)
 
-    for i = 1, pad_l do
-        prog_str = " " .. prog_str
-    end
-
-    for i = 0, pad_r do
-        prog_str = prog_str .. " "
-    end
-
-    GUI.ProgBar.radius = progress
-    GUI.ProgBar.string_value = prog_str
+    GUI.ProgBar.box_size = FFPOINT.new(MARGIN + (BOX_WIDTH * progress), BOX_END_Y, 2)
+    GUI.ProgStr.box_start = FFPOINT.new(TEXT_START_X + (pad * CHAR_WIDTH), PROG_START_Y + (LINE_HEIGHT / 2), 0)
+    GUI.ProgStr.string_value = prog_str
 
     API.DrawSquareFilled(GUI.Background)
+    API.DrawSquareFilled(GUI.ProgBg)
+    API.DrawSquareFilled(GUI.ProgBar)
+    API.DrawComboBox(GUI.Dropdown, false)
     API.DrawTextAt(GUI.Title)
     API.DrawTextAt(GUI.Text)
     API.DrawTextAt(GUI.Status)
@@ -1330,8 +1343,7 @@ function MINER:DrawGui()
     API.DrawTextAt(GUI.LvlGain)
     API.DrawTextAt(GUI.OreBox)
     API.DrawTextAt(GUI.TTL)
-    API.DrawComboBox(GUI.Dropdown, false)
-    API.DrawProgressBar(GUI.ProgBar)
+    API.DrawTextAt(GUI.ProgStr)
 end
 
 return MINER
