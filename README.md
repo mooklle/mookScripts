@@ -3,6 +3,8 @@
 ![GitHub last commit](https://img.shields.io/github/last-commit/mooklle/mookScripts?color=4ba8a2)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/t/mooklle/mookScripts?color=c247c2)
 
+![script gui](gui.png "Script GUI")
+
 
 An AIO mining script with auto navigation, banking (+ ore box/gem bag), and level-based ore switching.
 
