@@ -6,10 +6,10 @@
 ![script gui](gui.png "Script GUI")
 
 
-An AIO mining script with auto navigation, banking (+ ore box/gem bag), and level-based ore switching.
+An AIO mining script with auto navigation, optional banking (+ ore box/gem bag), and manual or level-based ore switching.
 
 Currently supports:
-- All core rocks including primal
+- All core rocks including Primal
 - Gem rocks:
   - Common
   - Uncommon
@@ -21,17 +21,18 @@ Currently supports:
 - `data/ores.lua`
     - Note: `api.lua` and `lodestones.lua` must go in the root `Lua_Scripts` directory.
 - Unlocked lodestones:
-    - Al Kharid (Banking)
+    - Al Kharid (Banking, Gold, Silver, Common - Precious Gems)
     - Varrock (Mithril, Adamantite, Dark Animica)
     - Falador (Coal, Luminite, Orichalcite)
     - Edgeville (Runite, Banite)
-    - Wilderness (Drakolith, Necrite)
+    - Wilderness (Drakolith, Necrite, Primals if not using Ring of Kinship)
     - Canifis (Phasmatite)
-    - Prifddinas (Corrupted)
+    - Prifddinas (Corrupted, Prif Gems)
     - Anachronia (Light Animica)
+- Ring of Kinship either equipped or in inventory for faster traversal to Primals
 
 #### Setup
-- Set up inventory (Ore box/gem bag, urns, BotG, GotE, outfit, etc)
+- Set up inventory (Ore box/gem bag, urns, BotG, GotE, Ring of Kinship, outfit, etc)
 - Edit config (see below)
 - Edit any items in `MINER.ORES` to suit your needs (disable ore box, change locations, etc)
 - Start script
@@ -45,7 +46,7 @@ Edit the following values in `mookMiner.lua` to change config values:
   - `false` - ignores ore box/gem bag and drops ore when full
 - `MINER.DefaultOre`
   - `nil` - uses level-based ore selection
-  - `string` - matches string against keys in `MINER.ORES`, and either mines that ore, or exits if no ore is found with the given key
+  - `string` - matches string against keys in `MINER.ORES` (i.e. "Banite", "Corrupted", etc), and either mines that ore, or exits if no ore is found with the given key. Valid options are listed in the comment above this setting in `mookMiner.lua`.
 
 #### Known issues
 - It's entirely possible to die on the way to the Necrite spot due to the aggressive creatures. I recommend either mining Phasmatite at that level instead, or re-writing the traversal function to avoid these creatures if that's a concern. Not really sure I can do anything to fix this one. [disable auto-retaliate may help]
