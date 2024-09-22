@@ -1,5 +1,14 @@
 # Previous versions
 
+v1.0.3
+```
+- Added gem rocks: Common, Uncommon, Precious, Priff
+- Added gem bag support
+- Changed check order in main loop
+- Reduced some delays for less wait time
+- Added comments in ores.lua to explain config
+```
+
 v1.0.2
 ```
 - Replaced DoAction_Object_Direct with DoAction_Object2

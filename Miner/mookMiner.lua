@@ -4,7 +4,7 @@
 @description AIO Mining Script
 @author mookl
 @date 30/08/2024
-@version 1.1.3
+@version 1.1.4
 
 Edit LEVEL_MAP to change mining targets.
 Automatically navigates to mining spot and banks ores.
@@ -19,7 +19,7 @@ ADDITIONAL CREDITS
 
 --]]
 
-local version = "v1.1.3"
+local version = "v1.1.4"
 local API = require("api")
 local MINER = require("data/ores")
 
@@ -41,6 +41,12 @@ MINER.Version = version
 ---
 --- Gems:
 --- CommonGem, UncommonGem, PreciousGem, PrifGem
+--- 
+--- Minerals:
+--- Clay, Limestone, Granite, Sandstone, RedSandstone, CrystalSandstone
+--- 
+--- Misc:
+--- RuneEssence
 
 -- Edit which ores to mine at which levels
 MINER.Level_Map = {
@@ -55,20 +61,27 @@ MINER.Level_Map = {
     [75]  = "Phasmatite",
     [81]  = "Banite",
     -- [89]  = "Corrupted",
-    [90] = "LightAnimica",
+    [90]  = "LightAnimica",
     [100] = "Novite"
 }
 --- Enable/disable banking by default
 MINER.DefaultBanking = true
 --- Either nil or one of the ores above
 --- If nil, default to level-based ore switching
-MINER.DefaultOre = "Corrupted"
+MINER.DefaultOre = nil
+--- Whether to start paused. Self-explanatory.
+MINER.StartPaused = true
 
+MINER:Init()
 while API.Read_LoopyLoop() do
     API.DoRandomEvents()
     math.randomseed(os.time())
     MINER:DrawGui()
     MINER:SelectOre()
+
+    if MINER.Run == false then
+        goto continue
+    end
 
     if MINER.Selected == nil then
         print("Selected ore must not be nil")
@@ -83,24 +96,27 @@ while API.Read_LoopyLoop() do
         print("Inventory full")
         if MINER:ShouldBank() == false then
             print("Banking disabled, dropping ores")
-            local oreId = MINER.Selected.OreID
+            local oreIds = MINER.Selected.OreID
             if MINER:CheckInventory() == false then
                 print("Failed to open inventory, exiting")
                 break
             end
 
-            while API.InvItemcount_1(oreId) > 0 and API.Read_LoopyLoop() do
-                API.DoAction_Inventory1(oreId, 0, 8, API.OFF_ACT_GeneralInterface_route2)
-                API.RandomSleep2(400, 200, 800)
+            for _,id in ipairs(oreIds) do
+                while API.InvItemcount_1(id) > 0 and API.Read_LoopyLoop() do
+                    API.DoAction_Inventory1(id, 0, 8, API.OFF_ACT_GeneralInterface_route2)
+                    API.RandomSleep2(400, 200, 800)
+                end
             end
 
             print("Finished dropping")
 
             goto continue
         end
-        MINER:SetStatus("Checking ore box")
-        print("Inventory full, checking ore box")
+
         if MINER.Selected.UseOreBox and MINER:HasOreBox() then
+            MINER:SetStatus("Checking ore box")
+            print("Inventory full, checking ore box")
             MINER:FillOreBox()
 
             if API.InvFull_() then
@@ -113,13 +129,12 @@ while API.Read_LoopyLoop() do
             MINER.Selected:Bank()
         end
 
-        
+
         goto continue
     end
 
     ::mine::
-    if not API.PInArea(MINER.Selected.Spot.x, 12, MINER.Selected.Spot.y, 12, MINER.Selected.Spot.z) 
-        and not API.ReadPlayerMovin2() then
+    if MINER:SpotCheck() == false and (MINER.Selected.SpotCheck ~= nil and MINER.Selected:SpotCheck() == false) then
         print("Traversing to ore location")
         MINER:Traverse(MINER.Selected)
         goto continue
