@@ -231,6 +231,7 @@ LOCATIONS = {
             area = nil,
             next = function()
                 LODESTONE.Falador()
+                API.WaitUntilMovingandAnimEnds()
             end
         },
         { -- 2: Run to dwarven mine entrance
@@ -256,6 +257,7 @@ LOCATIONS = {
             area = nil,
             next = function()
                 LODESTONE.Varrock()
+                API.WaitUntilMovingandAnimEnds()
             end
         },
         { -- 2: Run to east mine
@@ -271,6 +273,7 @@ LOCATIONS = {
             area = nil,
             next = function()
                 LODESTONE.Edgeville()
+                API.WaitUntilMovingandAnimEnds()
             end
         },
         { -- 2: Hop wall
@@ -543,7 +546,7 @@ function MINER:DwarvenMineBank()
     end
     API.RandomSleep2(100, 100, 300)
 
-    API.DoAction_Object1(0x29, API.OFF_ACT_GeneralObject_route1, { 113262 }, 25)
+    API.DoAction_Object1(0x29, API.OFF_ACT_GeneralObject_route1, { 113262, 113263 }, 25)
     API.WaitUntilMovingEnds()
 end
 
