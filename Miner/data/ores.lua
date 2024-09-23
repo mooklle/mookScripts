@@ -662,10 +662,6 @@ function MINER:Bank(bank, ore, type)
     end
 end
 
-function MINER:CheckArea(ore, range)
-    return API.PInArea(ore.Spot.x, range, ore.Spot.y, range, ore.Spot.z)
-end
-
 function MINER:RandomiseTile(x, y, z, off_x, off_y)
     x = x + math.random(-off_x, off_x)
     y = y + math.random(-off_y, off_y)
@@ -726,7 +722,7 @@ function MINER:FillOreBox()
 end
 
 function MINER:SpotCheck()
-    local range = MINER.Selected.Range == nil and { 12, 12 } or MINER.Selected.Range
+    local range = MINER.Selected.Spot.range or { 12, 12 }
     return API.PInArea(MINER.Selected.Spot.x, range[1], MINER.Selected.Spot.y, range[2], MINER.Selected.Spot.z)
 end
 
@@ -1118,9 +1114,10 @@ ORES.Necrite = { -- Necrite - Wilderness (north of bandit camp)
     RockIDs = { 113207, 113206, 113208 },
     Level = 70,
     Spot = {
-        x = 3029,
+        x = 3027,
         y = 3800,
-        z = 0
+        z = 0,
+        range = {13, 12}
     },
     UseOreBox = true,
     OreBoxIds = ORE_BOX,
